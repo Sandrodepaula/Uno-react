@@ -52,8 +52,8 @@ function shuffle(deck) {
 }
 
 const topCard = (game) => game.discard.at(-1);
-const nextSeat = (game, player, steps = 1) => {
-  const count = game.seats.length;
+const nextSeat = (room, game, player, steps = 1) => {
+  const count = room.seats.length;
   return ((player + game.direction * steps) % count + count) % count;
 };
 const canPlay = (game, card) => game.stack ? card.value === '+2'
@@ -129,14 +129,14 @@ function playCard(room, player, cardId, chosenColor) {
   if (card.color === 'wild') message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]}.`;
   if (card.value === 'skip') {
     advance = 2;
-    message = `${room.seats[nextSeat(game, player)].name} perdeu a vez.`;
+    message = `${room.seats[nextSeat(room, game, player)].name} perdeu a vez.`;
   } else if (card.value === 'rev') {
     game.direction *= -1;
     message = 'O sentido do jogo inverteu.';
     if (room.seats.length === 2) advance = 2;
   } else if (card.value === '+2') {
     game.stack += 2;
-    message = `Acumulou ${game.stack}: ${room.seats[nextSeat(game, player)].name} empilha +2 ou compra ${game.stack}.`;
+    message = `Acumulou ${game.stack}: ${room.seats[nextSeat(room, game, player)].name} empilha +2 ou compra ${game.stack}.`;
   }
   if (hand.length === 1) {
     message += ` ${room.seats[player].name}: UNO!`;
@@ -147,11 +147,11 @@ function playCard(room, player, cardId, chosenColor) {
   }
   game.message = message;
   if (card.value === 'w4') {
-    game.challenge = { player, target: nextSeat(game, player), illegal, color: chosenColor };
+    game.challenge = { player, target: nextSeat(room, game, player), illegal, color: chosenColor };
     game.current = -1;
     return;
   }
-  game.current = nextSeat(game, player, advance);
+  game.current = nextSeat(room, game, player, advance);
 }
 
 function resolveChallenge(room, challenge) {
@@ -172,7 +172,7 @@ function resolveChallenge(room, challenge) {
     drawCards(game, target, 6);
     result = `Desafio errado! ${targetName} comprou 6 cartas.`;
   }
-  game.current = nextSeat(game, player, 2);
+  game.current = nextSeat(room, game, player, 2);
   game.message = `${playerName} jogou +4 (${colorNames[color]}). ${result}`;
 }
 
@@ -193,7 +193,7 @@ function moveBot(room) {
       const count = game.stack;
       game.stack = 0;
       drawCards(game, player, count);
-      game.current = nextSeat(game, player);
+      game.current = nextSeat(room, game, player);
       game.message = `${room.seats[player].name} comprou ${count} cartas.`;
       return;
     }
@@ -203,7 +203,7 @@ function moveBot(room) {
       playCard(room, player, drawn.id, drawn.color === 'wild' ? pickBotColor(hand) : undefined);
       return;
     }
-    game.current = nextSeat(game, player);
+    game.current = nextSeat(room, game, player);
     game.message = `${room.seats[player].name} comprou uma carta e passou.`;
     return;
   }
@@ -412,7 +412,7 @@ io.on('connection', (socket) => {
       const count = game.stack;
       game.stack = 0;
       drawCards(game, player, count);
-      game.current = nextSeat(game, player);
+      game.current = nextSeat(room, game, player);
       game.message = `${room.seats[player].name} comprou ${count} cartas.`;
     } else {
       if (game.hands[player].some((card) => canPlay(game, card))) throw new Error('Você já tem uma carta jogável.');
@@ -422,7 +422,7 @@ io.on('connection', (socket) => {
         game.drawn = card.id;
         game.message = `${room.seats[player].name} comprou uma carta jogável.`;
       } else {
-        game.current = nextSeat(game, player);
+        game.current = nextSeat(room, game, player);
         game.message = `${room.seats[player].name} comprou uma carta e passou.`;
       }
     }
@@ -436,7 +436,7 @@ io.on('connection', (socket) => {
     if (game.drawn == null) throw new Error('Você ainda não comprou uma carta jogável.');
     game.message = `${room.seats[player].name} passou a vez.`;
     game.drawn = null;
-    game.current = nextSeat(game, player);
+    game.current = nextSeat(room, game, player);
     update(room);
   }));
 
