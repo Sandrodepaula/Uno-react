@@ -5,11 +5,13 @@ import './style.css';
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
 const COLOR_NAMES = { red: 'Vermelho', yellow: 'Amarelo', green: 'Verde', blue: 'Azul' };
-const SYMBOLS = { skip: '⊘', rev: '⇄', '+2': '+2', w: '★', w4: '+4' };
+const SYMBOLS = { skip: '⊘', rev: '⇄', '+2': '+2', discardAll: 'D', skipAll: '⊘ALL', w: '★', w4: '+4', w6: '+6', w10: '+10', roulette: 'R' };
+const CARD_NAMES = { skip: 'Pular', rev: 'Inverter', '+2': 'Comprar 2', discardAll: 'Descartar Tudo', skipAll: 'Pular Todos', w4: 'Inverter Comprar 4', w6: 'Comprar 6', w10: 'Comprar 10', roulette: 'Roleta Colorida' };
+const DRAW_VALUES = { '+2': 2, w4: 4, w6: 6, w10: 10 };
 const socket = io();
 
-function Card({ card, back = false, playable = false, onClick, pop = false }) {
-  const label = back ? 'Carta fechada' : `${card.color === 'wild' ? 'Coringa' : COLOR_NAMES[card.color]} ${SYMBOLS[card.value] ?? card.value}`;
+export function Card({ card, back = false, playable = false, onClick, pop = false }) {
+  const label = back ? 'Carta fechada' : `${card.color === 'wild' ? 'Coringa' : COLOR_NAMES[card.color]} ${CARD_NAMES[card.value] ?? card.value}`;
   const symbol = back ? 'UNO' : (SYMBOLS[card.value] ?? card.value);
   return (
     <div
@@ -32,13 +34,14 @@ function Card({ card, back = false, playable = false, onClick, pop = false }) {
   );
 }
 
-function App() {
+export function App() {
   const [state, setState] = useState(null);
   const [name, setName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [notice, setNotice] = useState('');
   const [pendingCard, setPendingCard] = useState(null);
   const [showColor, setShowColor] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
 
   useEffect(() => {
     const onUpdate = (next) => { setState(next); setNotice(''); };
@@ -57,13 +60,17 @@ function App() {
   const game = state?.game;
   const hand = game?.hand ?? [];
   const myTurn = Boolean(game && game.phase === 'play' && !game.challenge && game.current === state?.players.findIndex((player) => player.id === state.playerId));
-  const canPlay = (card) => game && (game.stack ? card.value === '+2' : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
+  const isEliminated = Boolean(state?.players.find((player) => player.id === state.playerId)?.eliminated);
+  const canPlay = (card) => game && (game.stack ? (DRAW_VALUES[card.value] ?? 0) >= game.stackLast : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
   const stuck = myTurn && game.drawn == null && !hand.some(canPlay);
   const send = (event, payload) => socket.emit(event, payload);
 
   const chooseCard = (card) => {
     if (!myTurn || !canPlay(card) || (game.drawn != null && game.drawn !== card.id)) return;
-    if (card.color === 'wild') {
+    if (card.value === '7') {
+      setPendingCard(card);
+      setShowSwap(true);
+    } else if (card.color === 'wild' && card.value !== 'roulette') {
       setPendingCard(card);
       setShowColor(true);
     } else send('game:play', { cardId: card.id });
@@ -96,14 +103,14 @@ function App() {
   const isLobby = state.phase === 'lobby';
   const opponents = state.players.filter((player) => player.id !== state.playerId);
   const winner = game?.winner == null ? null : state.players[game.winner];
-  const champion = game?.winner != null && state.players[game.winner]?.score >= 500;
+  const champion = game?.winner != null && state.players[game.winner]?.score >= 1000;
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <h1>UNO</h1>
         <div className="room-tag">Sala <strong>{state.code}</strong><button className="copy" onClick={() => navigator.clipboard?.writeText(state.code)}>Copiar</button></div>
-        <div className="turn">{game?.phase === 'play' ? `${game.direction === 1 ? '↻' : '↺'} ${state.players[game.current]?.name ? `Vez: ${state.players[game.current].name}` : 'Desafio +4'}` : ''}</div>
+        <div className="turn">{game?.phase === 'play' ? game.challenge ? 'Roleta Colorida' : `${game.direction === 1 ? '↻' : '↺'} ${state.players[game.current]?.name ? `Vez: ${state.players[game.current].name}` : ''}` : ''}</div>
         {state.isHost && !isLobby && <button className="quit" onClick={() => send('room:close-game')}>Encerrar partida</button>}
       </header>
 
@@ -139,9 +146,9 @@ function App() {
               return (
                 <div className={`opponent ${player.isCurrent && game.phase === 'play' ? 'active' : ''}`} key={player.id}
                   style={{ left: `${50 - 38 * Math.cos(angle)}%`, top: `${54 - 44 * Math.sin(angle)}%` }}>
-                  <div className="fan" aria-hidden="true">{Array.from({ length: Math.min(player.cardCount, 4) }, (_, i) => <Card key={i} back />)}</div>
-                  <strong>{player.name}</strong>
-                  <small>{player.cardCount} cartas · {player.score} pts</small>
+                  {!player.eliminated && <div className="fan" aria-hidden="true">{Array.from({ length: Math.min(player.cardCount, 4) }, (_, i) => <Card key={i} back />)}</div>}
+                  <strong>{player.name}{player.eliminated ? ' · Eliminado' : ''}</strong>
+                  <small>{player.eliminated ? 'Regra da Misericórdia' : `${player.cardCount} cartas · ${player.score} pts`}</small>
                 </div>
               );
             })}
@@ -154,24 +161,23 @@ function App() {
           </main>
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
-            {myTurn && game?.drawn != null && <button onClick={() => send('game:pass')}>Passar a vez</button>}
+            {myTurn && game?.drawn != null && <span className="muted">Jogue a carta comprada</span>}
           </div>
           <section className="hand" aria-label="Suas cartas">
-            {hand.map((card) => {
+            {isEliminated ? <p className="eliminated-message">Você foi eliminado pela Regra da Misericórdia.</p> : hand.map((card) => {
               const playable = myTurn && canPlay(card) && (game.drawn == null || game.drawn === card.id);
               return <Card key={card.id} card={card} playable={playable} onClick={() => chooseCard(card)} />;
             })}
           </section>
 
-          {game?.challenge?.targetId === state.playerId && (
+          {game?.challenge?.type === 'roulette' && game.challenge.targetId === state.playerId && (
             <div className="overlay">
               <section className="panel">
-                <h2>Desafiar o +4?</h2>
-                <p>Se quem jogou tinha a cor anterior na mão, essa pessoa compra 4. Se não tinha, você compra 6.</p>
-                <div className="lobby-actions">
-                  <button className="primary" onClick={() => send('game:challenge', { challenge: true })}>Desafiar</button>
-                  <button onClick={() => send('game:challenge', { challenge: false })}>Comprar 4</button>
-                </div>
+                <h2>Roleta Colorida</h2>
+                <p>Escolha uma cor. Revele cartas até encontrar uma dessa cor; fique com todas e perca a vez.</p>
+                <div className="color-grid">{COLORS.map((color) => (
+                  <button key={color} className={`color-choice ${color}`} onClick={() => send('game:roulette', { color })}>{COLOR_NAMES[color]}</button>
+                ))}</div>
               </section>
             </div>
           )}
@@ -191,11 +197,31 @@ function App() {
             </div>
           )}
 
+          {showSwap && pendingCard && (
+            <div className="overlay">
+              <section className="panel">
+                <h2>Troca 7</h2>
+                <p>Escolha outro jogador para trocar todas as cartas da mão.</p>
+                <div className="lobby-actions">
+                  {state.players.map((player, index) => (
+                    player.id !== state.playerId && !player.eliminated && (
+                      <button key={player.id} onClick={() => {
+                        send('game:play', { cardId: pendingCard.id, targetPlayer: index });
+                        setPendingCard(null);
+                        setShowSwap(false);
+                      }}>{player.name}</button>
+                    )
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+
           {game?.phase === 'over' && (
             <div className="overlay">
               <section className="panel">
                 <h2>{winner?.name} venceu a rodada! +{game.points} pts</h2>
-                {champion && <p>{winner.name} é o campeão (500 pts)!</p>}
+                {champion && <p>{winner.name} é o campeão (1000 pts)!</p>}
                 <p>{state.players.map((player) => `${player.name}: ${player.score}`).join(' | ')}</p>
                 {state.isHost && <button className="primary" onClick={() => send('room:next-round')}>{champion ? 'Nova partida' : 'Próxima rodada'}</button>}
               </section>
@@ -208,4 +234,5 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+const root = document.getElementById('root');
+if (root) createRoot(root).render(<App />);

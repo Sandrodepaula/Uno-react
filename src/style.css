@@ -113,6 +113,7 @@ h1 {
 .hand .card:last-child { margin-right: auto; }
 .hand .card.playable { transform: translateY(0); }
 .hand .card.playable:hover, .hand .card.playable:focus-visible { z-index: 2; transform: translateY(-12px); outline-offset: 2px; }
+.eliminated-message { align-self: center; margin: auto; font-weight: 800; text-align: center; }
 .action-bar { display: flex; min-height: 42px; justify-content: center; gap: 10px; padding-bottom: 8px; }
 .uno-button { border: 3px solid white; background: var(--red); color: white; font-style: italic; }
 .opponent {

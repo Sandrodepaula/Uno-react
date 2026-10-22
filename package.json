@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node server.js",
     "build": "vite build",
-    "start": "cross-env NODE_ENV=production node server.js"
+    "start": "cross-env NODE_ENV=production node server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -16,8 +18,11 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^7.0.3",
-    "vite": "^6.0.7"
+    "jsdom": "^29.1.1",
+    "vite": "^6.0.7",
+    "vitest": "^5.0.5"
   }
 }
