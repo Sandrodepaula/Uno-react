@@ -55,10 +55,12 @@ export const activePlayers = (game, count) => Array.from({ length: count }, (_, 
 export function drawCards(game, player, count, getRandomInt = randomInt) {
   for (let index = 0; index < count; index++) {
     if (!game.deck.length) {
+      if (game.discard.length <= 1) break;
       const top = game.discard.pop();
       game.deck = shuffle(game.discard, getRandomInt);
       game.discard = [top];
     }
+    if (!game.deck.length) break;
     game.hands[player].push(game.deck.pop());
   }
 }
