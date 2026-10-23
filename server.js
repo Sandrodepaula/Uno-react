@@ -211,11 +211,11 @@ io.on('connection', (socket) => {
     update(room);
   }));
 
-  socket.on('game:play', handle(socket, ({ cardId, color, targetPlayer }) => {
+  socket.on('game:play', handle(socket, ({ cardId, color, targetPlayer, discardCardIds }) => {
     const room = requireRoom(socket);
     const player = requirePlayer(socket, room);
     requireTurn(room, player);
-    playCard(room, player, Number(cardId), color, targetPlayer);
+    playCard(room, player, Number(cardId), color, targetPlayer, undefined, discardCardIds);
     update(room);
   }));
 
@@ -237,7 +237,6 @@ io.on('connection', (socket) => {
       game.current = nextSeat(room, game, player);
       game.message = `${room.seats[player].name} comprou ${count} cartas.`;
     } else {
-      if (game.hands[player].some((card) => canPlay(game, card))) throw new Error('Você já tem uma carta jogável.');
       let card;
       while (game.deck.length || game.discard.length > 1) {
         drawCards(game, player, 1);

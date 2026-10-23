@@ -10,12 +10,12 @@ const CARD_NAMES = { skip: 'Pular', rev: 'Inverter', '+2': 'Comprar 2', discardA
 const DRAW_VALUES = { '+2': 2, w4: 4, w6: 6, w10: 10 };
 const socket = io();
 
-export function Card({ card, back = false, playable = false, onClick, pop = false }) {
-  const label = back ? 'Carta fechada' : `${card.color === 'wild' ? 'Coringa' : COLOR_NAMES[card.color]} ${CARD_NAMES[card.value] ?? card.value}`;
+export function Card({ card, back = false, playable = false, selected = false, onClick, pop = false }) {
+  const label = back ? (playable ? 'Comprar do baralho' : 'Carta fechada') : `${card.color === 'wild' ? 'Coringa' : COLOR_NAMES[card.color]} ${CARD_NAMES[card.value] ?? card.value}`;
   const symbol = back ? 'UNO' : (SYMBOLS[card.value] ?? card.value);
   return (
     <div
-      className={`card ${back ? 'back' : card.color} ${playable ? 'playable' : ''} ${pop ? 'pop' : ''}`}
+      className={`card ${back ? 'back' : card.color} ${playable ? 'playable' : ''} ${selected ? 'selected' : ''} ${pop ? 'pop' : ''}`}
       role={playable ? 'button' : undefined}
       tabIndex={playable ? 0 : undefined}
       aria-label={label}
@@ -42,6 +42,8 @@ export function App() {
   const [pendingCard, setPendingCard] = useState(null);
   const [showColor, setShowColor] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
+  const [showDiscard, setShowDiscard] = useState(false);
+  const [selectedDiscardIds, setSelectedDiscardIds] = useState([]);
 
   useEffect(() => {
     const onUpdate = (next) => { setState(next); setNotice(''); };
@@ -70,6 +72,10 @@ export function App() {
     if (card.value === '7') {
       setPendingCard(card);
       setShowSwap(true);
+    } else if (card.value === 'discardAll') {
+      setPendingCard(card);
+      setSelectedDiscardIds([]);
+      setShowDiscard(true);
     } else if (card.color === 'wild' && card.value !== 'roulette') {
       setPendingCard(card);
       setShowColor(true);
@@ -77,7 +83,7 @@ export function App() {
   };
 
   const draw = () => {
-    if (myTurn && game.drawn == null && (game.stack || !hand.some(canPlay))) send('game:draw');
+    if (myTurn && game.drawn == null) send('game:draw');
   };
 
   if (!state) {
@@ -153,11 +159,11 @@ export function App() {
               );
             })}
             <div className="center-table">
-              <Card back playable={stuck} onClick={draw} />
+              <Card back playable={myTurn && game.drawn == null} onClick={draw} />
               {game?.topCard && <Card card={game.topCard} pop />}
               <span className={`color-indicator ${game?.color}`} title={`Cor atual: ${COLOR_NAMES[game?.color]}`} />
             </div>
-            <p className="message" role="status">{game?.message}{myTurn ? stuck ? ' Sua vez: compre uma carta.' : ' Sua vez!' : ''}{state.players.find((player) => player.id === state.playerId)?.bot ? '' : ''}</p>
+            <p className="message" role="status">{game?.message}{myTurn ? game.drawn != null ? ' Sua vez: jogue a carta comprada.' : stuck ? ' Sua vez: compre uma carta.' : ' Sua vez: jogue uma carta ou compre do baralho.' : ''}{state.players.find((player) => player.id === state.playerId)?.bot ? '' : ''}</p>
           </main>
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
@@ -212,6 +218,45 @@ export function App() {
                       }}>{player.name}</button>
                     )
                   ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {showDiscard && pendingCard && (
+            <div className="overlay">
+              <section className="panel" role="dialog" aria-modal="true" aria-labelledby="discard-dialog-title">
+                <h2 id="discard-dialog-title">Descartar cartas</h2>
+                <p>Selecione as cartas {COLOR_NAMES[pendingCard.color].toLowerCase()} que deseja descartar.</p>
+                <div className="hand discard-selection" aria-label="Cartas disponíveis para descarte">
+                  {hand.filter((card) => card.id !== pendingCard.id && card.color === pendingCard.color).map((card) => (
+                    <Card
+                      key={card.id}
+                      card={card}
+                      playable
+                      selected={selectedDiscardIds.includes(card.id)}
+                      onClick={() => setSelectedDiscardIds((selected) => selected.includes(card.id)
+                        ? selected.filter((id) => id !== card.id)
+                        : [...selected, card.id])}
+                    />
+                  ))}
+                </div>
+                <div className="lobby-actions">
+                  <button
+                    className="primary"
+                    disabled={hand.some((card) => card.id !== pendingCard.id && card.color === pendingCard.color) && selectedDiscardIds.length === 0}
+                    onClick={() => {
+                      send('game:play', { cardId: pendingCard.id, discardCardIds: selectedDiscardIds });
+                      setPendingCard(null);
+                      setSelectedDiscardIds([]);
+                      setShowDiscard(false);
+                    }}
+                  >Descartar selecionadas ({selectedDiscardIds.length})</button>
+                  <button className="secondary" onClick={() => {
+                    setPendingCard(null);
+                    setSelectedDiscardIds([]);
+                    setShowDiscard(false);
+                  }}>Cancelar</button>
                 </div>
               </section>
             </div>

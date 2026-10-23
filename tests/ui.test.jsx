@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
 const { socketMock } = vi.hoisted(() => {
   const listeners = new Map();
@@ -100,6 +100,25 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 17, targetPlayer: 1 }]);
   });
 
+  it('permite selecionar parcialmente cartas da cor ao jogar Descartar Tudo', () => {
+    renderGame(gameState({
+      hand: [
+        { color: 'red', value: 'discardAll', id: 1 },
+        { color: 'red', value: '2', id: 2 },
+        { color: 'red', value: 'skip', id: 3 },
+        { color: 'blue', value: '4', id: 4 },
+      ],
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vermelho Descartar Tudo' }));
+    const dialog = screen.getByRole('dialog', { name: 'Descartar cartas' });
+    expect(within(dialog).queryByRole('button', { name: 'Azul 4' })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Vermelho 2' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Descartar selecionadas (1)' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 1, discardCardIds: [2] }]);
+  });
+
   it('solicita a cor escolhida pelo alvo da Roleta Colorida', () => {
     renderGame(gameState({
       hand: [{ color: 'wild', value: 'roulette', id: 23 }],
@@ -120,6 +139,14 @@ describe('interface do jogo', () => {
 
     expect(screen.queryByRole('button', { name: 'Vermelho 5' })).toBeNull();
     expect(screen.getByText(/Vez: Beto/)).toBeTruthy();
+  });
+
+  it('permite comprar do baralho mesmo tendo uma carta jogável', () => {
+    renderGame(gameState({ hand: [{ color: 'red', value: '5', id: 50 }] }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Comprar do baralho' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:draw', undefined]);
   });
 
   it('mostra o aviso de eliminação em vez da mão do jogador', () => {

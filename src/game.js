@@ -117,7 +117,7 @@ export function finishIfLastPlayer(room) {
   return true;
 }
 
-export function playCard(room, player, cardId, chosenColor, targetPlayer, getRandomInt = randomInt) {
+export function playCard(room, player, cardId, chosenColor, targetPlayer, getRandomInt = randomInt, discardCardIds) {
   const game = room.game;
   const hand = game.hands[player];
   const cardIndex = hand.findIndex((card) => card.id === cardId);
@@ -127,6 +127,17 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
   if (card.color === 'wild' && card.value !== 'roulette' && !colors.includes(chosenColor)) throw new Error('Escolha uma cor válida.');
   if (card.value === '7' && (!Number.isInteger(targetPlayer) || targetPlayer === player || game.eliminated.includes(targetPlayer) || !game.hands[targetPlayer])) {
     throw new Error('Escolha outro jogador que ainda esteja na partida.');
+  }
+  const matchingCards = hand.filter((other) => other.id !== cardId && other.color === card.color);
+  const selectedDiscardIds = discardCardIds ?? matchingCards.map((other) => other.id);
+  if (card.value === 'discardAll') {
+    if (!Array.isArray(selectedDiscardIds) || new Set(selectedDiscardIds).size !== selectedDiscardIds.length
+      || selectedDiscardIds.some((id) => !matchingCards.some((other) => other.id === id))
+      || (matchingCards.length > 0 && selectedDiscardIds.length === 0)) {
+      throw new Error('Selecione ao menos uma carta da mesma cor para descartar.');
+    }
+  } else if (discardCardIds !== undefined) {
+    throw new Error('Não é possível descartar cartas com essa jogada.');
   }
 
   hand.splice(cardIndex, 1);
@@ -155,10 +166,11 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     advance = 0;
     message = `${room.seats[player].name} pulou a vez de todos e joga novamente.`;
   } else if (card.value === 'discardAll') {
-    const discarded = hand.filter((other) => other.color === card.color);
-    game.hands[player] = hand.filter((other) => other.color !== card.color);
+    const selectedIds = new Set(selectedDiscardIds);
+    const discarded = hand.filter((other) => selectedIds.has(other.id));
+    game.hands[player] = hand.filter((other) => !selectedIds.has(other.id));
     game.discard.splice(game.discard.length - 1, 0, ...discarded);
-    message = `${room.seats[player].name} descartou todas as cartas ${colorNames[card.color]}.`;
+    message = `${room.seats[player].name} descartou ${discarded.length} carta${discarded.length === 1 ? '' : 's'} ${colorNames[card.color]}.`;
   } else if (card.value === '7') {
     [game.hands[player], game.hands[targetPlayer]] = [game.hands[targetPlayer], game.hands[player]];
     message = `${room.seats[player].name} trocou as cartas com ${room.seats[targetPlayer].name}.`;

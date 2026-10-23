@@ -148,7 +148,7 @@ describe('regras das cartas', () => {
     expect(room.game.hands[1].map(({ id }) => id)).toEqual([6]);
   });
 
-  it('Descartar Tudo remove todas as cartas restantes da mesma cor', () => {
+  it('Descartar Tudo descarta somente as cartas da mesma cor selecionadas', () => {
     const room = createRoom(3);
     room.game.hands[0] = [
       card('red', 'discardAll', 1),
@@ -156,9 +156,21 @@ describe('regras das cartas', () => {
       card('red', 'skip', 3),
       card('blue', '4', 4),
     ];
-    playCard(room, 0, 1);
-    expect(room.game.hands[0].map(({ id }) => id)).toEqual([4]);
-    expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 3, 1]);
+    playCard(room, 0, 1, undefined, undefined, undefined, [2]);
+    expect(room.game.hands[0].map(({ id }) => id)).toEqual([3, 4]);
+    expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 1]);
+  });
+
+  it('rejeita descarte de carta que não seja da mesma cor', () => {
+    const room = createRoom(3);
+    room.game.hands[0] = [
+      card('red', 'discardAll', 1),
+      card('red', '2', 2),
+      card('blue', '4', 4),
+    ];
+    expect(() => playCard(room, 0, 1, undefined, undefined, undefined, [4]))
+      .toThrow('Selecione ao menos uma carta da mesma cor para descartar.');
+    expect(room.game.hands[0].map(({ id }) => id)).toEqual([1, 2, 4]);
   });
 
   it('o Curinga Inverter +4 em dois jogadores inverte, pula o adversário e faz quem jogou comprar quatro', () => {

@@ -101,6 +101,9 @@ h1 {
 .card.back .oval { background: var(--red); }
 .card.back .oval b { color: #ffe14a; font-size: calc(var(--card-width) * .3); text-shadow: 1px 1px black; }
 .card.playable { outline: 3px solid var(--yellow); outline-offset: 2px; cursor: pointer; filter: none; }
+.card.selected { box-shadow: 0 0 0 4px #49e8d0; }
+.discard-selection { min-height: auto; width: 100%; justify-content: center; flex-wrap: wrap; overflow: visible; }
+.discard-selection .card { margin: 8px; transform: none; }
 .hand {
   display: flex;
   min-height: calc(var(--card-width) * 1.5 + 36px);
