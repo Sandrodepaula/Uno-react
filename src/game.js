@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 export const colors = ['red', 'yellow', 'green', 'blue'];
 export const colorNames = { red: 'vermelho', yellow: 'amarelo', green: 'verde', blue: 'azul' };
 export const drawValues = { '+2': 2, w4: 4, w6: 6, w8rev: 8, w10: 10 };
-const actionValues = new Set(['skip', 'rev', '+2', 'discardAll', 'skipAll', 'w4', 'w6', 'w10', 'roulette', 'attackFinal']);
+const actionValues = new Set(['skip', 'rev', '+2', 'discardAll', 'wildDiscardAll', 'skipAll', 'w4', 'w6', 'w10', 'roulette', 'draw24', 'attackFinal']);
 
 export function makeDeck() {
   const deck = [];
@@ -20,7 +20,9 @@ export function makeDeck() {
   for (let copy = 0; copy < 4; copy++) {
     for (const value of ['w4', 'w6', 'w8rev', 'w10', 'roulette']) deck.push({ color: 'wild', value, id: id++ });
   }
+  for (let copy = 0; copy < 2; copy++) deck.push({ color: 'wild', value: 'draw24', id: id++ });
   for (let copy = 0; copy < 2; copy++) deck.push({ color: 'wild', value: 'attackFinal', id: id++ });
+  for (let copy = 0; copy < 8; copy++) deck.push({ color: 'wild', value: 'wildDiscardAll', id: id++ });
   return deck;
 }
 
@@ -175,6 +177,11 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     game.hands[player] = hand.filter((other) => !selectedIds.has(other.id));
     game.discard.splice(game.discard.length - 1, 0, ...discarded);
     message = `${room.seats[player].name} descartou ${discarded.length} carta${discarded.length === 1 ? '' : 's'} ${colorNames[card.color]}.`;
+  } else if (card.value === 'wildDiscardAll') {
+    const discarded = hand.filter((other) => other.color === chosenColor);
+    game.hands[player] = hand.filter((other) => other.color !== chosenColor);
+    game.discard.splice(game.discard.length - 1, 0, ...discarded);
+    message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]} e descartou ${discarded.length} carta${discarded.length === 1 ? '' : 's'} dessa cor.`;
   } else if (card.value === '7') {
     [game.hands[player], game.hands[targetPlayer]] = [game.hands[targetPlayer], game.hands[player]];
     message = `${room.seats[player].name} trocou as cartas com ${room.seats[targetPlayer].name}.`;
@@ -213,6 +220,10 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     message = actionCount >= 7
       ? `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} comprou ${actionCount} cartas e foi eliminado.`
       : `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} comprou ${actionCount} carta${actionCount === 1 ? '' : 's'} e perdeu a vez.`;
+  } else if (card.value === 'draw24') {
+    const players = activePlayers(game, room.seats.length);
+    players.forEach((index) => drawCards(game, index, Math.max(0, 24 - game.hands[index].length), getRandomInt));
+    message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]}. Todos compraram cartas até terem 24 na mão.`;
   }
 
   if (game.phase !== 'play') return;

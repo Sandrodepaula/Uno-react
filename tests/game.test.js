@@ -43,13 +43,15 @@ function createRoom(count = 3) {
 }
 
 describe('baralho e distribuição', () => {
-  it('cria um baralho de 174 cartas com identificadores únicos e as quantidades corretas', () => {
+  it('cria um baralho de 184 cartas com identificadores únicos e as quantidades corretas', () => {
     const deck = makeDeck();
-    expect(deck).toHaveLength(174);
-    expect(new Set(deck.map(({ id }) => id)).size).toBe(174);
+    expect(deck).toHaveLength(184);
+    expect(new Set(deck.map(({ id }) => id)).size).toBe(184);
     expect(deck.filter(({ color, value }) => color === 'wild' && value === 'roulette')).toHaveLength(4);
     expect(deck.filter(({ color, value }) => color === 'wild' && value === 'attackFinal')).toHaveLength(2);
     expect(deck.filter(({ color, value }) => color === 'wild' && value === 'w8rev')).toHaveLength(4);
+    expect(deck.filter(({ color, value }) => color === 'wild' && value === 'draw24')).toHaveLength(2);
+    expect(deck.filter(({ color, value }) => color === 'wild' && value === 'wildDiscardAll')).toHaveLength(8);
     expect(deck.filter(({ color, value }) => color === 'red' && value === '7')).toHaveLength(3);
     expect(deck.filter(({ color, value }) => color === 'red' && value === 'discardAll')).toHaveLength(2);
   });
@@ -60,7 +62,7 @@ describe('baralho e distribuição', () => {
     expect(room.game.hands.map((hand) => hand.length)).toEqual(Array(7).fill(7));
     expect(Number.isNaN(Number(room.game.discard[0].value))).toBe(false);
     expect(room.game.discard[0].color).not.toBe('wild');
-    expect(room.game.deck.length + room.game.discard.length + room.game.hands.flat().length).toBe(174);
+    expect(room.game.deck.length + room.game.discard.length + room.game.hands.flat().length).toBe(184);
   });
 
   it('não fabrica cartas quando o baralho e a pilha de descarte acabam', () => {
@@ -127,6 +129,24 @@ describe('regras das cartas', () => {
     expect(room.game.current).toBe(2);
   });
 
+  it('Coringa Comprar até 24 completa a mão de todos e mantém a cor escolhida', () => {
+    const room = createRoom(3);
+    room.game.hands = [
+      [card('wild', 'draw24', 1), card('red', '4', 2), card('blue', '7', 3)],
+      Array.from({ length: 20 }, (_, index) => card('green', '1', index + 10)),
+      Array.from({ length: 23 }, (_, index) => card('blue', '2', index + 40)),
+    ];
+    room.game.deck = Array.from({ length: 27 }, (_, index) => card('yellow', String(index + 1), index + 100));
+
+    playCard(room, 0, 1, 'green');
+
+    expect(room.game.hands.map((hand) => hand.length)).toEqual([24, 24, 24]);
+    expect(room.game.color).toBe('green');
+    expect(room.game.current).toBe(1);
+    expect(room.game.stack).toBe(0);
+    expect(room.game.message).toContain('Todos compraram cartas até terem 24 na mão');
+  });
+
   it('Pular avança dois assentos e Inverter muda o sentido', () => {
     const room = createRoom(4);
     room.game.hands[0] = [card('red', 'skip', 1), card('blue', '3', 2)];
@@ -187,6 +207,25 @@ describe('regras das cartas', () => {
     playCard(room, 0, 1, undefined, undefined, undefined, [2]);
     expect(room.game.hands[0].map(({ id }) => id)).toEqual([3, 4]);
     expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 1]);
+  });
+
+  it('Coringa Descartar Tudo remove todas as cartas da cor escolhida e fica no topo', () => {
+    const room = createRoom(3);
+    room.game.hands[0] = [
+      card('wild', 'wildDiscardAll', 1),
+      card('red', '2', 2),
+      card('red', 'skip', 3),
+      card('blue', '4', 4),
+      card('wild', 'w4', 5),
+    ];
+
+    playCard(room, 0, 1, 'red');
+
+    expect(room.game.hands[0].map(({ id }) => id)).toEqual([4, 5]);
+    expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 3, 1]);
+    expect(room.game.discard.at(-1)).toEqual(card('wild', 'wildDiscardAll', 1));
+    expect(room.game.color).toBe('red');
+    expect(room.game.current).toBe(1);
   });
 
   it('rejeita descarte de carta que não seja da mesma cor', () => {
@@ -377,7 +416,7 @@ describe('simulação em massa', () => {
         turns++;
 
         const cardsInPlay = game.deck.length + game.discard.length + game.hands.reduce((total, hand) => total + hand.length, 0);
-        expect(cardsInPlay, `partida ${match + 1}, turno ${turns}`).toBe(174);
+        expect(cardsInPlay, `partida ${match + 1}, turno ${turns}`).toBe(184);
         expect(game.phase !== 'play' || game.current === -1 || !game.eliminated.includes(game.current), `turno ${turns} de jogador eliminado`).toBe(true);
       }
       expect(room.game.phase, `partida ${match + 1} não terminou em 2000 turnos`).toBe('over');

@@ -274,6 +274,237 @@ h1 {
 .fan .card.draw8-reverse .oval b,
 .fan .card.draw8-reverse .oval::after,
 .fan .card.draw8-reverse .corner { display: none; }
+.card.draw24 {
+  --card-color: white;
+  --u: var(--card-width);
+  overflow: hidden;
+  background: var(--attack-black, #0d0d0d);
+}
+.card.draw24 .oval {
+  inset: 12% -4% 10% 4%;
+  transform: rotate(-24deg);
+  background:
+    repeating-linear-gradient(100deg, transparent 0 14%, #b07cff33 14% 15.5%, transparent 15.5% 28%),
+    radial-gradient(ellipse at 70% 25%, #6a3bb8, #3a1d6e 55%, #1d0f3d);
+  box-shadow: 0 0 calc(var(--u) * .12) #7b4bd066;
+}
+.card.draw24 .oval > b {
+  position: relative;
+  display: block;
+  width: calc(var(--u) * .9);
+  height: calc(var(--u) * .9);
+  transform: rotate(24deg);
+  font-size: 0;
+}
+.card.draw24 .oval .eye-icon { --w: calc(var(--u) * .86); margin: calc(var(--u) * .1) auto 0; }
+.card.draw24 .eye-icon {
+  --w: calc(var(--u) * .28);
+  position: relative;
+  display: block;
+  width: var(--w);
+  height: calc(var(--w) * .95);
+}
+.card.draw24 .eye {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--w) * .2);
+  left: 50%;
+  width: calc(var(--w) * .62);
+  height: calc(var(--w) * .62);
+  margin: calc(var(--w) * -.31) 0 0 calc(var(--w) * -.31);
+  overflow: hidden;
+  transform: rotate(-45deg);
+  border: calc(var(--w) * .045) solid white;
+  border-radius: 0 100% 0 100%;
+  background: linear-gradient(135deg,
+    var(--blue) 0 26%, var(--green) 26% 42%,
+    var(--red) 42% 66%, var(--yellow) 66%);
+  box-shadow: inset 0 0 0 calc(var(--w) * .025) #111, 0 0 0 calc(var(--w) * .02) #111;
+}
+.card.draw24 .eye b {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--w) * .3);
+  height: calc(var(--w) * .3);
+  margin: calc(var(--w) * -.15) 0 0 calc(var(--w) * -.15);
+  transform: translate(calc(var(--w) * .07), calc(var(--w) * -.07));
+  border-radius: 50%;
+  background: radial-gradient(circle, #111 0 38%, white 42%);
+}
+.card.draw24 .eye-icon s {
+  position: absolute;
+  top: calc(var(--w) * .34);
+  left: 50%;
+  width: calc(var(--w) * .1);
+  height: calc(var(--w) * .58);
+  margin-left: calc(var(--w) * -.05);
+  transform-origin: 50% 0;
+  border: calc(var(--w) * .03) solid white;
+  border-radius: var(--w);
+}
+.card.draw24 .eye-icon s:nth-of-type(1) { transform: translateX(calc(var(--w) * -.34)) rotate(-18deg); }
+.card.draw24 .eye-icon s:nth-of-type(2) { transform: translateX(calc(var(--w) * -.20)) rotate(-10deg); }
+.card.draw24 .eye-icon s:nth-of-type(3) { transform: translateX(calc(var(--w) * -.07)) rotate(-3deg); }
+.card.draw24 .eye-icon s:nth-of-type(4) { transform: translateX(calc(var(--w) * .07)) rotate(3deg); }
+.card.draw24 .eye-icon s:nth-of-type(5) { transform: translateX(calc(var(--w) * .20)) rotate(10deg); }
+.card.draw24 .eye-icon s:nth-of-type(6) { transform: translateX(calc(var(--w) * .34)) rotate(18deg); }
+.card.draw24::before {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 18%, #ffffff55 18.3% 18.8%, transparent 19.1%),
+    linear-gradient(70deg, transparent 0 74%, #ffffff44 74.3% 74.7%, transparent 75%),
+    linear-gradient(160deg, transparent 0 55%, #ffffff33 55.2% 55.5%, transparent 55.8%);
+  content: "";
+}
+.card.draw24 .corner { z-index: 4; line-height: 0; }
+.card.draw24 .corner.top { top: 5%; left: 8%; }
+.card.draw24 .corner.bottom { right: 8%; bottom: 5%; }
+.card.draw24 .corner .eye-icon { --w: calc(var(--u) * .28); }
+.fan .card.draw24::before,
+.fan .card.draw24 .oval > b,
+.fan .card.draw24 .corner { display: none; }
+.card.discard-all {
+  --card-color: #111;
+  --u: var(--card-width);
+  overflow: hidden;
+  background: var(--attack-black, #0d0d0d);
+}
+.card.discard-all .oval {
+  inset: 9% 5% 9% 5%;
+  transform: rotate(18deg);
+  background: #fbfaf2;
+  box-shadow: 0 0 0 calc(var(--u) * .015) #00000055;
+}
+.card.discard-all .oval > b {
+  position: relative;
+  display: block;
+  width: calc(var(--u) * .8);
+  height: calc(var(--u) * 1.15);
+  transform: rotate(-18deg);
+  font-size: 0;
+}
+.card.discard-all .spread {
+  --w: calc(var(--u) * .28);
+  position: relative;
+  display: block;
+  width: var(--w);
+  height: calc(var(--w) * .8);
+}
+.card.discard-all .spread s {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: calc(var(--w) * .38);
+  height: calc(var(--w) * .58);
+  margin-left: calc(var(--w) * -.19);
+  transform-origin: 50% 110%;
+  border: calc(var(--w) * .035) solid #111;
+  border-radius: calc(var(--w) * .06);
+  box-shadow: 0 1px 3px #0006;
+}
+.card.discard-all .spread s:nth-of-type(1) { background: var(--blue); transform: translateX(calc(var(--w) * -.30)) rotate(-24deg); }
+.card.discard-all .spread s:nth-of-type(2) { background: var(--green); transform: translateX(calc(var(--w) * -.10)) rotate(-8deg); }
+.card.discard-all .spread s:nth-of-type(3) { background: var(--red); transform: translateX(calc(var(--w) * .10)) rotate(8deg); }
+.card.discard-all .spread s:nth-of-type(4) { background: var(--yellow); transform: translateX(calc(var(--w) * .30)) rotate(24deg); }
+.card.discard-all .oval .spread {
+  --w: calc(var(--u) * .62);
+  position: absolute;
+  top: 14%;
+  left: 34%;
+}
+.card.discard-all .oval .spread s { border-color: #111; }
+.card.discard-all em {
+  --a: calc(var(--u) * .3);
+  --t: calc(var(--u) * .022);
+  --h: calc(var(--u) * .04);
+  --arrow: #111;
+  position: absolute;
+  width: calc(var(--a) * .7);
+  height: calc(var(--a) * .8);
+  border: solid var(--arrow);
+  border-width: 0 var(--t) var(--t) 0;
+  border-radius: 0 0 100% 0;
+  font-style: normal;
+}
+.card.discard-all em::after {
+  position: absolute;
+  bottom: calc(-1 * var(--h) - var(--t) / 2);
+  left: calc(-1 * var(--h));
+  border: var(--h) solid transparent;
+  border-left-width: 0;
+  border-right-color: var(--arrow);
+  content: "";
+}
+.card.discard-all .oval em { top: 42%; left: 40%; transform: rotate(42deg); }
+.card.discard-all .oval u {
+  position: absolute;
+  bottom: 12%;
+  left: 5%;
+  width: calc(var(--u) * .52);
+  height: calc(var(--u) * .34);
+  text-decoration: none;
+}
+.card.discard-all .oval u i {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: calc(var(--u) * .24);
+  transform: skewX(-22deg) rotate(-6deg);
+  border: calc(var(--u) * .012) solid #111;
+  border-radius: calc(var(--u) * .03);
+  background: #3b3b3b;
+}
+.card.discard-all .oval u i:nth-child(1) { top: calc(var(--u) * .10); background: #222; }
+.card.discard-all .oval u i:nth-child(2) { top: calc(var(--u) * .085); background: #2a2a2a; }
+.card.discard-all .oval u i:nth-child(3) { top: calc(var(--u) * .06); background: #303030; }
+.card.discard-all .oval u i:nth-child(4) { top: calc(var(--u) * .035); background: #363636; }
+.card.discard-all .oval u i:nth-child(5) { top: 0; background: #444; }
+.card.discard-all::before {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 14%, #ffffff55 14.3% 14.8%, transparent 15.1%),
+    linear-gradient(70deg, transparent 0 80%, #ffffff44 80.3% 80.7%, transparent 81%),
+    linear-gradient(160deg, transparent 0 60%, #ffffff33 60.2% 60.5%, transparent 60.8%);
+  content: "";
+}
+.card.discard-all .corner {
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * .05);
+  line-height: 0;
+}
+.card.discard-all .corner.top { top: 6%; left: 8%; }
+.card.discard-all .corner.bottom { right: 8%; bottom: 6%; }
+.card.discard-all .corner em {
+  --a: calc(var(--u) * .22);
+  --t: calc(var(--u) * .018);
+  --h: calc(var(--u) * .03);
+  --arrow: white;
+  position: relative;
+  margin-top: calc(var(--u) * -.02);
+  border-width: var(--t) var(--t) 0 0;
+  border-radius: 0 100% 0 0;
+}
+.card.discard-all .corner em::after {
+  top: auto;
+  bottom: calc(-1 * var(--h));
+  left: auto;
+  right: calc(-1 * var(--h) - var(--t) / 2);
+  border: var(--h) solid transparent;
+  border-bottom-width: 0;
+  border-top-color: var(--arrow);
+}
+.fan .card.discard-all::before,
+.fan .card.discard-all .oval > b,
+.fan .card.discard-all .corner { display: none; }
 .card.back { background: #151515; }
 .card.back .oval { background: var(--red); }
 .card.back .oval b { color: #ffe14a; font-size: calc(var(--card-width) * .3); text-shadow: 1px 1px black; }

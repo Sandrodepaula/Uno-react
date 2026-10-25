@@ -99,6 +99,24 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 18, color: 'green' }]);
   });
 
+  it('permite escolher a cor para o Coringa Comprar até 24', () => {
+    renderGame(gameState({ hand: [{ color: 'wild', value: 'draw24', id: 24 }] }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Coringa Comprar até 24' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Azul' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 24, color: 'blue' }]);
+  });
+
+  it('permite escolher a cor ao jogar Coringa Descartar Tudo', () => {
+    renderGame(gameState({ hand: [{ color: 'wild', value: 'wildDiscardAll', id: 25 }] }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Coringa Descartar Tudo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Amarelo' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 25, color: 'yellow' }]);
+  });
+
   it('joga o Coringa Ataque Final sem pedir escolha de cor', () => {
     renderGame(gameState({ hand: [{ color: 'wild', value: 'attackFinal', id: 31 }] }));
 

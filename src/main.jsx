@@ -5,8 +5,8 @@ import './style.css';
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
 const COLOR_NAMES = { red: 'Vermelho', yellow: 'Amarelo', green: 'Verde', blue: 'Azul' };
-const SYMBOLS = { skip: '⊘', rev: '⇄', '+2': '+2', discardAll: 'D', skipAll: '⊘ALL', w: '★', w4: '+4', w6: '+6', w8rev: '⇄', w10: '+10', roulette: 'R', attackFinal: '+' };
-const CARD_NAMES = { skip: 'Pular', rev: 'Inverter', '+2': 'Comprar 2', discardAll: 'Descartar Tudo', skipAll: 'Pular Todos', w4: 'Inverter Comprar 4', w6: 'Comprar 6', w8rev: 'Inverter Comprar 8', w10: 'Comprar 10', roulette: 'Roleta Colorida', attackFinal: 'Ataque Final' };
+const SYMBOLS = { skip: '⊘', rev: '⇄', '+2': '+2', discardAll: 'D', wildDiscardAll: 'D', skipAll: '⊘ALL', w: '★', w4: '+4', w6: '+6', w8rev: '⇄', w10: '+10', roulette: 'R', draw24: '24', attackFinal: '+' };
+const CARD_NAMES = { skip: 'Pular', rev: 'Inverter', '+2': 'Comprar 2', discardAll: 'Descartar Tudo', wildDiscardAll: 'Descartar Tudo', skipAll: 'Pular Todos', w4: 'Inverter Comprar 4', w6: 'Comprar 6', w8rev: 'Inverter Comprar 8', w10: 'Comprar 10', roulette: 'Roleta Colorida', draw24: 'Comprar até 24', attackFinal: 'Ataque Final' };
 const DRAW_VALUES = { '+2': 2, w4: 4, w6: 6, w8rev: 8, w10: 10 };
 const socket = io();
 
@@ -14,9 +14,14 @@ export function Card({ card, back = false, playable = false, selected = false, o
   const label = back ? (playable ? 'Comprar do baralho' : 'Carta fechada') : `${card.color === 'wild' ? 'Coringa' : COLOR_NAMES[card.color]} ${CARD_NAMES[card.value] ?? card.value}`;
   const symbol = back ? 'UNO' : (SYMBOLS[card.value] ?? card.value);
   const draw8Reverse = !back && card.value === 'w8rev';
+  const draw24 = !back && card.value === 'draw24';
+  const wildDiscardAll = !back && card.value === 'wildDiscardAll';
+  const eyeIcon = <span className="eye-icon"><span className="eye"><b /></span>{Array.from({ length: 6 }, (_, index) => <s key={index} />)}</span>;
+  const spreadIcon = <span className="spread">{Array.from({ length: 4 }, (_, index) => <s key={index} />)}</span>;
+  const discardPile = <u>{Array.from({ length: 5 }, (_, index) => <i key={index} />)}</u>;
   return (
     <div
-      className={`card ${back ? 'back' : card.color} ${!back && card.value === 'attackFinal' ? 'attack-final' : ''} ${draw8Reverse ? 'draw8-reverse' : ''} ${playable ? 'playable' : ''} ${selected ? 'selected' : ''} ${pop ? 'pop' : ''}`}
+      className={`card ${back ? 'back' : card.color} ${!back && card.value === 'attackFinal' ? 'attack-final' : ''} ${draw8Reverse ? 'draw8-reverse' : ''} ${draw24 ? 'draw24' : ''} ${wildDiscardAll ? 'discard-all' : ''} ${playable ? 'playable' : ''} ${selected ? 'selected' : ''} ${pop ? 'pop' : ''}`}
       role={playable ? 'button' : undefined}
       tabIndex={playable ? 0 : undefined}
       aria-label={label}
@@ -28,11 +33,20 @@ export function Card({ card, back = false, playable = false, selected = false, o
         }
       } : undefined}
     >
-      <span className="corner top">{draw8Reverse ? <><em>⇄</em><strong>+8</strong></> : symbol}</span>
+      <span className="corner top">
+        {draw8Reverse ? <><em>⇄</em><strong>+8</strong></> : draw24 ? eyeIcon : wildDiscardAll ? <>{spreadIcon}<em /></> : symbol}
+      </span>
       <i className="oval">
-        <b>{draw8Reverse ? Array.from({ length: 7 }, (_, index) => <i key={index} />) : symbol}</b>
+        <b>
+          {draw8Reverse ? Array.from({ length: 7 }, (_, index) => <i key={index} />)
+            : draw24 ? eyeIcon
+              : wildDiscardAll ? <>{spreadIcon}<em />{discardPile}</>
+                : symbol}
+        </b>
       </i>
-      <span className="corner bottom">{draw8Reverse ? <><em>⇄</em><strong>+8</strong></> : symbol}</span>
+      <span className="corner bottom">
+        {draw8Reverse ? <><em>⇄</em><strong>+8</strong></> : draw24 ? eyeIcon : wildDiscardAll ? <>{spreadIcon}<em /></> : symbol}
+      </span>
     </div>
   );
 }
