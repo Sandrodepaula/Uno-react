@@ -218,34 +218,40 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
   game.current = nextSeat(room, game, player, advance);
 }
 
-export function drawRoulette(game, player, color, getRandomInt = randomInt) {
-  let foundColor = false;
-  while (game.deck.length || game.discard.length > 1) {
-    if (!game.deck.length) {
-      const top = game.discard.pop();
-      game.deck = shuffle(game.discard, getRandomInt);
-      game.discard = [top];
-      if (!game.deck.length) break;
-    }
-    const card = game.deck.pop();
-    game.hands[player].push(card);
-    if (card.color === color) {
-      foundColor = true;
-      break;
-    }
-  }
-  return foundColor;
-}
-
-export function resolveRoulette(room, color, getRandomInt = randomInt) {
+export function resolveRoulette(room, color) {
   const game = room.game;
   if (game.challenge?.type !== 'roulette') throw new Error('Não há Roleta Colorida pendente.');
+  if (game.challenge.color) throw new Error('A cor da Roleta Colorida já foi escolhida.');
   if (!colors.includes(color)) throw new Error('Escolha uma cor válida.');
-  const { target } = game.challenge;
+  game.challenge.color = color;
+  game.color = color;
+  game.message = `${room.seats[game.challenge.target].name} deve comprar cartas uma por uma até encontrar ${colorNames[color]}.`;
+}
+
+export function drawRouletteCard(room, getRandomInt = randomInt) {
+  const game = room.game;
+  const challenge = game.challenge;
+  if (challenge?.type !== 'roulette' || !challenge.color) throw new Error('Escolha uma cor antes de comprar cartas.');
+  const { target, color } = challenge;
+  if (!game.deck.length && game.discard.length > 1) {
+    const top = game.discard.pop();
+    game.deck = shuffle(game.discard, getRandomInt);
+    game.discard = [top];
+  }
+  const drawnCard = game.deck.pop();
+  if (drawnCard) game.hands[target].push(drawnCard);
+  if (drawnCard?.color !== color && (game.deck.length || game.discard.length > 1)) {
+    game.message = `${room.seats[target].name} comprou uma carta. Compre outra até encontrar ${colorNames[color]}.`;
+    return;
+  }
+
   const targetName = room.seats[target].name;
   game.challenge = null;
-  drawRoulette(game, target, color, getRandomInt);
-  game.color = color;
+  if (checkMercy(room, target) && finishIfLastPlayer(room)) return;
+  game.current = nextSeat(room, game, target);
+  game.message = drawnCard?.color === color
+    ? `${targetName} encontrou ${colorNames[color]} e perdeu a vez.`
+    : `${targetName} não tinha mais cartas para comprar e perdeu a vez.`;
   if (checkMercy(room, target) && finishIfLastPlayer(room)) return;
   game.current = nextSeat(room, game, target);
   game.message = `${targetName} revelou cartas até encontrar ${colorNames[color]} e perdeu a vez.`;

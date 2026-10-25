@@ -131,6 +131,20 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:roulette', { color: 'green' }]);
   });
 
+  it('permite ao alvo comprar uma carta por vez na Roleta Colorida', () => {
+    renderGame(gameState({
+      hand: [{ color: 'wild', value: 'roulette', id: 23 }],
+      game: {
+        challenge: { type: 'roulette', targetId: 'p0', color: 'green' },
+        current: -1,
+      },
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Comprar uma carta' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:roulette:draw', undefined]);
+  });
+
   it('desabilita jogadas quando é a vez de outro jogador', () => {
     renderGame(gameState({
       hand: [{ color: 'red', value: '5', id: 50 }],

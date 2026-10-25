@@ -184,10 +184,19 @@ export function App() {
             <div className="overlay">
               <section className="panel">
                 <h2>Roleta Colorida</h2>
-                <p>Escolha uma cor. Revele cartas até encontrar uma dessa cor; fique com todas e perca a vez.</p>
-                <div className="color-grid">{COLORS.map((color) => (
-                  <button key={color} className={`color-choice ${color}`} onClick={() => send('game:roulette', { color })}>{COLOR_NAMES[color]}</button>
-                ))}</div>
+                {game.challenge.color ? (
+                  <>
+                    <p>Compre uma carta por vez até encontrar uma carta {COLOR_NAMES[game.challenge.color].toLowerCase()}. Você ficará com todas e perderá a vez.</p>
+                    <button className="primary" onClick={() => send('game:roulette:draw')}>Comprar uma carta</button>
+                  </>
+                ) : (
+                  <>
+                    <p>Escolha uma cor. Depois, compre as cartas uma por uma até encontrar uma dessa cor.</p>
+                    <div className="color-grid">{COLORS.map((color) => (
+                      <button key={color} className={`color-choice ${color}`} onClick={() => send('game:roulette', { color })}>{COLOR_NAMES[color]}</button>
+                    ))}</div>
+                  </>
+                )}
               </section>
             </div>
           )}

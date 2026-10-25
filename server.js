@@ -10,6 +10,7 @@ import {
   colors,
   deal,
   drawCards,
+  drawRouletteCard,
   finishIfLastPlayer,
   moveBot,
   nextSeat,
@@ -63,7 +64,11 @@ function publicView(room, playerId) {
       stackLast: game.stackLast,
       drawn: player >= 0 && game.drawn != null && game.current === player ? game.drawn : null,
       hand: player >= 0 ? game.hands[player] : [],
-      challenge: game.challenge ? { type: game.challenge.type, targetId: room.seats[game.challenge.target].id } : null,
+      challenge: game.challenge ? {
+        type: game.challenge.type,
+        targetId: room.seats[game.challenge.target].id,
+        color: game.challenge.color ?? null,
+      } : null,
       unoAvailable: player >= 0 && game.unoPlayer === player,
       winner: game.winner,
       points: game.points,
@@ -95,7 +100,8 @@ function schedule(room) {
   if (game.challenge && room.seats[game.challenge.target]?.bot) {
     room.botTimer = setTimeout(() => {
       if (room.game?.challenge) {
-        resolveRoulette(room, colors[randomInt(colors.length)]);
+        if (room.game.challenge.color) drawRouletteCard(room);
+        else resolveRoulette(room, colors[randomInt(colors.length)]);
         broadcast(room);
         schedule(room);
       }
@@ -285,6 +291,14 @@ io.on('connection', (socket) => {
     requirePlayer(socket, room);
     if (!room.game?.challenge || room.seats[room.game.challenge.target].id !== socket.id) throw new Error('Você não pode responder a este desafio.');
     resolveRoulette(room, color);
+    update(room);
+  }));
+
+  socket.on('game:roulette:draw', handle(socket, () => {
+    const room = requireRoom(socket);
+    requirePlayer(socket, room);
+    if (!room.game?.challenge || room.seats[room.game.challenge.target].id !== socket.id) throw new Error('Você não pode responder a este desafio.');
+    drawRouletteCard(room);
     update(room);
   }));
 

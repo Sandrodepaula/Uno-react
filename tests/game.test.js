@@ -5,6 +5,7 @@ import {
   checkMercy,
   deal,
   drawCards,
+  drawRouletteCard,
   endRound,
   makeDeck,
   moveBot,
@@ -186,13 +187,22 @@ describe('regras das cartas', () => {
     expect(room.game.stack).toBe(0);
   });
 
-  it('a Roleta Colorida revela cartas até encontrar a cor escolhida', () => {
+  it('a Roleta Colorida compra uma carta por vez até encontrar a cor escolhida', () => {
     const room = createRoom(3);
     room.game.hands[0] = [card('wild', 'roulette', 1), card('red', '5', 2)];
     room.game.deck = [card('blue', '1', 3), card('yellow', '2', 4), card('green', '3', 5)];
     playCard(room, 0, 1);
     expect(room.game.challenge).toMatchObject({ type: 'roulette', target: 1 });
     resolveRoulette(room, 'yellow');
+    expect(room.game.hands[1]).toHaveLength(0);
+    expect(room.game.challenge).toMatchObject({ color: 'yellow' });
+
+    drawRouletteCard(room);
+    expect(room.game.hands[1].map(({ id }) => id)).toEqual([5]);
+    expect(room.game.challenge).toMatchObject({ type: 'roulette', target: 1 });
+    expect(room.game.deck.map(({ id }) => id)).toEqual([3, 4]);
+
+    drawRouletteCard(room);
     expect(room.game.hands[1].map(({ id }) => id)).toEqual([5, 4]);
     expect(room.game.deck.map(({ id }) => id)).toEqual([3]);
     expect(room.game.color).toBe('yellow');
@@ -285,7 +295,10 @@ describe('simulação em massa', () => {
       let turns = 0;
       while (room.game.phase === 'play' && turns < 2000) {
         const game = room.game;
-        if (game.challenge?.type === 'roulette') resolveRoulette(room, ['red', 'yellow', 'green', 'blue'][getRandomInt(4)], getRandomInt);
+        if (game.challenge?.type === 'roulette') {
+          if (game.challenge.color) drawRouletteCard(room, getRandomInt);
+          else resolveRoulette(room, ['red', 'yellow', 'green', 'blue'][getRandomInt(4)]);
+        }
         else if (game.unoPlayer >= 0) resolveUnoPenalty(room, getRandomInt);
         else moveBot(room, getRandomInt, random);
         turns++;
