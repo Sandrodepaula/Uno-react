@@ -77,15 +77,16 @@ afterEach(() => {
 });
 
 describe('interface do jogo', () => {
-  it('envia a confirmação ao clicar na moeda da Regra da Misericórdia', () => {
+  it('identifica a moeda como Sem Misericórdia e confirma a eliminação ao clicar', () => {
     renderGame(gameState({
       hand: Array.from({ length: 25 }, (_, index) => ({ color: 'red', value: '1', id: index })),
       game: { current: 0, mercyPending: true, mercyAvailable: true },
     }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar eliminação pela Regra da Misericórdia' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sem Misericórdia' }));
 
     expect(socketMock.emitted).toContainEqual(['game:mercy:confirm', undefined]);
+    expect(screen.getByText('Sem Misericórdia')).toBeTruthy();
   });
 
   it('cria uma sala pela tela inicial', () => {

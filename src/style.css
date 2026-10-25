@@ -527,6 +527,7 @@ h1 {
 .eliminated-message { align-self: center; margin: auto; font-weight: 800; text-align: center; }
 .action-bar { display: flex; min-height: 42px; justify-content: center; gap: 10px; padding-bottom: 8px; }
 .uno-button { border: 3px solid white; background: var(--red); color: white; font-style: italic; }
+.mercy-action { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: .75rem; font-weight: 800; }
 .coin.mercy {
   --u: var(--coin-size, calc(var(--card-width) * 1.5));
   --coin-rim: #e53a14;

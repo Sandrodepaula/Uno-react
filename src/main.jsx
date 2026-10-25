@@ -189,14 +189,17 @@ export function App() {
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
             {game?.mercyAvailable && (
-              <button className="coin mercy playable" aria-label="Confirmar eliminação pela Regra da Misericórdia" title="Confirmar eliminação pela Regra da Misericórdia" onClick={() => send('game:mercy:confirm')}>
-                <span className="logo">UNO</span>
-                <span className="mask">
-                  <i className="eye left" />
-                  <i className="eye right" />
-                  <span className="mouth"><b>7</b></span>
-                </span>
-              </button>
+              <div className="mercy-action">
+                <button className="coin mercy playable" aria-label="Sem Misericórdia" title="Sem Misericórdia" onClick={() => send('game:mercy:confirm')}>
+                  <span className="logo">UNO</span>
+                  <span className="mask">
+                    <i className="eye left" />
+                    <i className="eye right" />
+                    <span className="mouth"><b>7</b></span>
+                  </span>
+                </button>
+                <span aria-hidden="true">Sem Misericórdia</span>
+              </div>
             )}
             {myTurn && (
               <button disabled={game.drawn == null} onClick={() => send('game:pass')}>Passar a vez</button>
