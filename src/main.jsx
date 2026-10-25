@@ -61,6 +61,7 @@ export function App() {
   const [showSwap, setShowSwap] = useState(false);
   const [showDiscard, setShowDiscard] = useState(false);
   const [selectedDiscardIds, setSelectedDiscardIds] = useState([]);
+  const [selectedDiscardColor, setSelectedDiscardColor] = useState(null);
 
   useEffect(() => {
     const onUpdate = (next) => { setState(next); setNotice(''); };
@@ -94,6 +95,7 @@ export function App() {
     } else if (card.value === 'discardAll') {
       setPendingCard(card);
       setSelectedDiscardIds([]);
+      setSelectedDiscardColor(card.color);
       setShowDiscard(true);
     } else if (card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value)) {
       setPendingCard(card);
@@ -240,9 +242,15 @@ export function App() {
                 <h2>Escolha uma cor</h2>
                 <div className="color-grid">{COLORS.map((color) => (
                   <button key={color} className={`color-choice ${color}`} onClick={() => {
-                    send('game:play', { cardId: pendingCard.id, color });
-                    setPendingCard(null);
                     setShowColor(false);
+                    if (pendingCard.value === 'wildDiscardAll') {
+                      setSelectedDiscardColor(color);
+                      setSelectedDiscardIds([]);
+                      setShowDiscard(true);
+                    } else {
+                      send('game:play', { cardId: pendingCard.id, color });
+                      setPendingCard(null);
+                    }
                   }}>{COLOR_NAMES[color]}</button>
                 ))}</div>
               </section>
@@ -273,9 +281,9 @@ export function App() {
             <div className="overlay">
               <section className="panel" role="dialog" aria-modal="true" aria-labelledby="discard-dialog-title">
                 <h2 id="discard-dialog-title">Descartar cartas</h2>
-                <p>Selecione as cartas {COLOR_NAMES[pendingCard.color].toLowerCase()} que deseja descartar.</p>
+                <p>Selecione as cartas {COLOR_NAMES[selectedDiscardColor].toLowerCase()} que deseja descartar.</p>
                 <div className="hand discard-selection" aria-label="Cartas disponíveis para descarte">
-                  {hand.filter((card) => card.id !== pendingCard.id && card.color === pendingCard.color).map((card) => (
+                  {hand.filter((card) => card.id !== pendingCard.id && card.color === selectedDiscardColor).map((card) => (
                     <Card
                       key={card.id}
                       card={card}
@@ -290,17 +298,23 @@ export function App() {
                 <div className="lobby-actions">
                   <button
                     className="primary"
-                    disabled={hand.some((card) => card.id !== pendingCard.id && card.color === pendingCard.color) && selectedDiscardIds.length === 0}
+                    disabled={hand.some((card) => card.id !== pendingCard.id && card.color === selectedDiscardColor) && selectedDiscardIds.length === 0}
                     onClick={() => {
-                      send('game:play', { cardId: pendingCard.id, discardCardIds: selectedDiscardIds });
+                      send('game:play', {
+                        cardId: pendingCard.id,
+                        ...(pendingCard.value === 'wildDiscardAll' ? { color: selectedDiscardColor } : {}),
+                        discardCardIds: selectedDiscardIds,
+                      });
                       setPendingCard(null);
                       setSelectedDiscardIds([]);
+                      setSelectedDiscardColor(null);
                       setShowDiscard(false);
                     }}
                   >Descartar selecionadas ({selectedDiscardIds.length})</button>
                   <button className="secondary" onClick={() => {
                     setPendingCard(null);
                     setSelectedDiscardIds([]);
+                    setSelectedDiscardColor(null);
                     setShowDiscard(false);
                   }}>Cancelar</button>
                 </div>

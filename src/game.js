@@ -134,12 +134,20 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     throw new Error('Escolha outro jogador que ainda esteja na partida.');
   }
   const matchingCards = hand.filter((other) => other.id !== cardId && other.color === card.color);
+  const discardableCards = card.value === 'wildDiscardAll'
+    ? hand.filter((other) => other.id !== cardId && other.color === chosenColor)
+    : matchingCards;
   const selectedDiscardIds = discardCardIds ?? matchingCards.map((other) => other.id);
-  if (card.value === 'discardAll') {
+  if (card.value === 'wildDiscardAll' && !Array.isArray(discardCardIds)) {
+    throw new Error('Selecione as cartas que deseja descartar.');
+  }
+  if (card.value === 'discardAll' || card.value === 'wildDiscardAll') {
     if (!Array.isArray(selectedDiscardIds) || new Set(selectedDiscardIds).size !== selectedDiscardIds.length
-      || selectedDiscardIds.some((id) => !matchingCards.some((other) => other.id === id))
-      || (matchingCards.length > 0 && selectedDiscardIds.length === 0)) {
-      throw new Error('Selecione ao menos uma carta da mesma cor para descartar.');
+      || selectedDiscardIds.some((id) => !discardableCards.some((other) => other.id === id))
+      || (discardableCards.length > 0 && selectedDiscardIds.length === 0)) {
+      throw new Error(card.value === 'discardAll'
+        ? 'Selecione ao menos uma carta da mesma cor para descartar.'
+        : 'Selecione ao menos uma carta da cor escolhida para descartar.');
     }
   } else if (discardCardIds !== undefined) {
     throw new Error('Não é possível descartar cartas com essa jogada.');
@@ -178,10 +186,11 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     game.discard.splice(game.discard.length - 1, 0, ...discarded);
     message = `${room.seats[player].name} descartou ${discarded.length} carta${discarded.length === 1 ? '' : 's'} ${colorNames[card.color]}.`;
   } else if (card.value === 'wildDiscardAll') {
-    const discarded = hand.filter((other) => other.color === chosenColor);
-    game.hands[player] = hand.filter((other) => other.color !== chosenColor);
+    const selectedIds = new Set(selectedDiscardIds);
+    const discarded = hand.filter((other) => selectedIds.has(other.id));
+    game.hands[player] = hand.filter((other) => !selectedIds.has(other.id));
     game.discard.splice(game.discard.length - 1, 0, ...discarded);
-    message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]} e descartou ${discarded.length} carta${discarded.length === 1 ? '' : 's'} dessa cor.`;
+    message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]} e descartou ${discarded.length} carta${discarded.length === 1 ? '' : 's'} ${colorNames[chosenColor]}.`;
   } else if (card.value === '7') {
     [game.hands[player], game.hands[targetPlayer]] = [game.hands[targetPlayer], game.hands[player]];
     message = `${room.seats[player].name} trocou as cartas com ${room.seats[targetPlayer].name}.`;
@@ -324,8 +333,15 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
       return;
     }
     if (drawn && canPlay(game, drawn)) {
-          playCard(room, player, drawn.id, drawn.color === 'wild' && !['roulette', 'attackFinal'].includes(drawn.value) ? pickBotColor(hand, getRandomInt) : undefined,
-        drawn.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined, getRandomInt);
+      const chosenColor = drawn.color === 'wild' && !['roulette', 'attackFinal'].includes(drawn.value)
+        ? pickBotColor(hand, getRandomInt)
+        : undefined;
+      const discardCardIds = drawn.value === 'wildDiscardAll'
+        ? hand.filter((card) => card.color === chosenColor).map((card) => card.id)
+        : undefined;
+      playCard(room, player, drawn.id, chosenColor,
+        drawn.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined,
+        getRandomInt, discardCardIds);
       return;
     }
     game.current = nextSeat(room, game, player);
@@ -337,8 +353,15 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
   const actionCards = pool.filter((card) => Number.isNaN(Number(card.value)));
   const choices = actionCards.length && random() < 0.6 ? actionCards : pool;
   const card = choices[getRandomInt(choices.length)];
-  playCard(room, player, card.id, card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value) ? pickBotColor(hand, getRandomInt) : undefined,
-    card.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined, getRandomInt);
+  const chosenColor = card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value)
+    ? pickBotColor(hand, getRandomInt)
+    : undefined;
+  const discardCardIds = card.value === 'wildDiscardAll'
+    ? hand.filter((other) => other.color === chosenColor).map((other) => other.id)
+    : undefined;
+  playCard(room, player, card.id, chosenColor,
+    card.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined,
+    getRandomInt, discardCardIds);
 }
 
 export function resolveUnoPenalty(room, getRandomInt = randomInt) {

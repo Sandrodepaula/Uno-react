@@ -109,12 +109,27 @@ describe('interface do jogo', () => {
   });
 
   it('permite escolher a cor ao jogar Coringa Descartar Tudo', () => {
-    renderGame(gameState({ hand: [{ color: 'wild', value: 'wildDiscardAll', id: 25 }] }));
+    renderGame(gameState({
+      hand: [
+        { color: 'wild', value: 'wildDiscardAll', id: 25 },
+        { color: 'yellow', value: '2', id: 26 },
+        { color: 'yellow', value: 'skip', id: 27 },
+        { color: 'red', value: '4', id: 28 },
+      ],
+    }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Coringa Descartar Tudo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Amarelo' }));
+    const dialog = screen.getByRole('dialog', { name: 'Descartar cartas' });
+    expect(within(dialog).queryByLabelText('Vermelho 4')).toBeNull();
+    fireEvent.click(within(dialog).getByLabelText('Amarelo 2'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Descartar selecionadas (1)' }));
 
-    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 25, color: 'yellow' }]);
+    expect(socketMock.emitted).toContainEqual(['game:play', {
+      cardId: 25,
+      color: 'yellow',
+      discardCardIds: [26],
+    }]);
   });
 
   it('joga o Coringa Ataque Final sem pedir escolha de cor', () => {

@@ -209,7 +209,7 @@ describe('regras das cartas', () => {
     expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 1]);
   });
 
-  it('Coringa Descartar Tudo remove todas as cartas da cor escolhida e fica no topo', () => {
+  it('Coringa Descartar Tudo descarta somente as cartas selecionadas da cor escolhida', () => {
     const room = createRoom(3);
     room.game.hands[0] = [
       card('wild', 'wildDiscardAll', 1),
@@ -219,13 +219,26 @@ describe('regras das cartas', () => {
       card('wild', 'w4', 5),
     ];
 
-    playCard(room, 0, 1, 'red');
+    playCard(room, 0, 1, 'red', undefined, undefined, [2]);
 
-    expect(room.game.hands[0].map(({ id }) => id)).toEqual([4, 5]);
-    expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 3, 1]);
+    expect(room.game.hands[0].map(({ id }) => id)).toEqual([3, 4, 5]);
+    expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 1]);
     expect(room.game.discard.at(-1)).toEqual(card('wild', 'wildDiscardAll', 1));
     expect(room.game.color).toBe('red');
     expect(room.game.current).toBe(1);
+  });
+
+  it('rejeita cartas fora da cor escolhida no Coringa Descartar Tudo', () => {
+    const room = createRoom(3);
+    room.game.hands[0] = [
+      card('wild', 'wildDiscardAll', 1),
+      card('red', '2', 2),
+      card('blue', '4', 3),
+    ];
+
+    expect(() => playCard(room, 0, 1, 'red', undefined, undefined, [3]))
+      .toThrow('Selecione ao menos uma carta da cor escolhida para descartar.');
+    expect(room.game.hands[0].map(({ id }) => id)).toEqual([1, 2, 3]);
   });
 
   it('rejeita descarte de carta que não seja da mesma cor', () => {
