@@ -11,7 +11,7 @@
   --yellow: #ecb400;
   --green: #2f9a1b;
   --blue: #0a5fb4;
-  --card-width: clamp(52px, 13.5vw, 88px);
+  --card-width: clamp(52px, 13.5vw, 68px);
 }
 
 * { box-sizing: border-box; }
@@ -112,7 +112,7 @@ h1 {
   padding: 14px 16px 10px;
 }
 .hand .card { margin-left: calc(var(--card-width) * -.3); transform: translateY(10px); filter: brightness(.78); transition: transform .15s; }
-.hand .card:first-child { margin-left: auto; }
+.hand .card:first-child { margin-left: auto; }  
 .hand .card:last-child { margin-right: auto; }
 .hand .card.playable { transform: translateY(0); }
 .hand .card.playable:hover, .hand .card.playable:focus-visible { z-index: 2; transform: translateY(-12px); outline-offset: 2px; }
