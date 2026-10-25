@@ -79,7 +79,7 @@ export function App() {
 
   const game = state?.game;
   const hand = game?.hand ?? [];
-  const myTurn = Boolean(game && game.phase === 'play' && !game.challenge && game.current === state?.players.findIndex((player) => player.id === state.playerId));
+  const myTurn = Boolean(game && game.phase === 'play' && !game.challenge && !game.mercyPending && game.current === state?.players.findIndex((player) => player.id === state.playerId));
   const drawnCard = hand.find((card) => card.id === game?.drawn);
   const isEliminated = Boolean(state?.players.find((player) => player.id === state.playerId)?.eliminated);
   const canPlay = (card) => game && (game.stack ? (DRAW_VALUES[card.value] ?? 0) >= game.stackLast : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
@@ -188,6 +188,16 @@ export function App() {
           </main>
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
+            {game?.mercyAvailable && (
+              <button className="coin mercy playable" aria-label="Confirmar eliminação pela Regra da Misericórdia" title="Confirmar eliminação pela Regra da Misericórdia" onClick={() => send('game:mercy:confirm')}>
+                <span className="logo">UNO</span>
+                <span className="mask">
+                  <i className="eye left" />
+                  <i className="eye right" />
+                  <span className="mouth"><b>7</b></span>
+                </span>
+              </button>
+            )}
             {myTurn && (
               <button disabled={game.drawn == null} onClick={() => send('game:pass')}>Passar a vez</button>
             )}

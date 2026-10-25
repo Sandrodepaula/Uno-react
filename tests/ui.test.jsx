@@ -58,6 +58,8 @@ function gameState({ hand = [], game = {}, players = undefined } = {}) {
       stackLast: 0,
       drawn: null,
       challenge: null,
+      mercyPending: false,
+      mercyAvailable: false,
       message: '',
       ...game,
     },
@@ -75,6 +77,17 @@ afterEach(() => {
 });
 
 describe('interface do jogo', () => {
+  it('envia a confirmação ao clicar na moeda da Regra da Misericórdia', () => {
+    renderGame(gameState({
+      hand: Array.from({ length: 25 }, (_, index) => ({ color: 'red', value: '1', id: index })),
+      game: { current: 0, mercyPending: true, mercyAvailable: true },
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar eliminação pela Regra da Misericórdia' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:mercy:confirm', undefined]);
+  });
+
   it('cria uma sala pela tela inicial', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Criar sala' }));

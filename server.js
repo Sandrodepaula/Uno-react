@@ -8,6 +8,7 @@ import {
   canPlay,
   checkMercy,
   colors,
+  confirmMercy,
   deal,
   drawCards,
   drawRouletteCard,
@@ -76,6 +77,9 @@ function publicView(room, playerId) {
         actionCount: game.revealedHand.actionCount,
       } : null,
       unoAvailable: player >= 0 && game.unoPlayer === player,
+      mercyPending: game.mercyPlayer >= 0,
+      mercyAvailable: player >= 0 && game.mercyPlayer === player,
+      mercyPlayerName: game.mercyPlayer >= 0 ? room.seats[game.mercyPlayer].name : null,
       winner: game.winner,
       points: game.points,
       message: game.message,
@@ -97,6 +101,17 @@ function schedule(room) {
   if (room.unoTimer) clearTimeout(room.unoTimer);
   const game = room.game;
   if (!game || game.phase !== 'play') return;
+
+  if (game.mercyPlayer >= 0) {
+    if (room.seats[game.mercyPlayer]?.bot) {
+      room.botTimer = setTimeout(() => {
+        confirmMercy(room, game.mercyPlayer);
+        broadcast(room);
+        schedule(room);
+      }, 1100);
+    }
+    return;
+  }
 
   scheduleUnoPenalty(room, () => {
     const roundOver = resolveUnoPenalty(room);
@@ -143,7 +158,7 @@ function requirePlayer(socket, room) {
 }
 function requireTurn(room, player) {
   const game = room.game;
-  if (!game || game.phase !== 'play' || game.challenge || game.current !== player) throw new Error('Ainda não é a sua vez.');
+  if (!game || game.phase !== 'play' || game.challenge || game.mercyPlayer >= 0 || game.current !== player) throw new Error('Ainda não é a sua vez.');
   return game;
 }
 function handle(socket, action) {
@@ -248,7 +263,9 @@ io.on('connection', (socket) => {
         return;
       }
       game.current = nextSeat(room, game, player);
-      game.message = `${room.seats[player].name} comprou ${count} cartas.`;
+      game.message = game.mercyPlayer === player
+        ? `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`
+        : `${room.seats[player].name} comprou ${count} cartas.`;
     } else {
       game.revealedHand = null;
       let card;
@@ -261,7 +278,7 @@ io.on('connection', (socket) => {
           return;
         }
         game.current = nextSeat(room, game, player);
-        game.message = `${room.seats[player].name} foi eliminado pela Regra da Misericórdia.`;
+        game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`;
       } else if (card) {
         game.drawn = card.id;
         game.message = `${room.seats[player].name} comprou uma carta${canPlay(game, card) ? ' jogável' : ''}.`;
@@ -292,6 +309,14 @@ io.on('connection', (socket) => {
     if (!game || game.phase !== 'play' || game.unoPlayer !== player) throw new Error('Não há UNO para confirmar.');
     game.unoPlayer = -1;
     game.message = `${room.seats[player].name}: UNO!`;
+    update(room);
+  }));
+
+  socket.on('game:mercy:confirm', handle(socket, () => {
+    const room = requireRoom(socket);
+    const player = requirePlayer(socket, room);
+    if (!room.game || room.game.phase !== 'play') throw new Error('Não há uma Regra da Misericórdia para confirmar.');
+    confirmMercy(room, player);
     update(room);
   }));
 

@@ -527,6 +527,133 @@ h1 {
 .eliminated-message { align-self: center; margin: auto; font-weight: 800; text-align: center; }
 .action-bar { display: flex; min-height: 42px; justify-content: center; gap: 10px; padding-bottom: 8px; }
 .uno-button { border: 3px solid white; background: var(--red); color: white; font-style: italic; }
+.coin.mercy {
+  --u: var(--coin-size, calc(var(--card-width) * 1.5));
+  --coin-rim: #e53a14;
+  --coin-rim-dark: #a81c00;
+  --burst-a: #8f1d1d;
+  --burst-b: #5e0f12;
+  --mask-white: #f4f1e4;
+  --mask-gray: #b9b8c4;
+  --coin-black: #111;
+  position: relative;
+  display: block;
+  width: var(--u);
+  height: var(--u);
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  padding: 0;
+  background: radial-gradient(circle at 35% 28%, #ff5a2b, var(--coin-rim) 45%, var(--coin-rim-dark));
+  box-shadow: 0 3px 8px #0007, inset 0 calc(var(--u) * .02) calc(var(--u) * .03) #ff9a7a88, inset 0 calc(var(--u) * -.03) calc(var(--u) * .04) #00000055;
+  color: white;
+  font-weight: 900;
+  user-select: none;
+}
+.coin.mercy::before {
+  position: absolute;
+  inset: 8%;
+  border: calc(var(--u) * .045) solid var(--coin-black);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, transparent 45%, #3a0808aa 100%),
+    repeating-conic-gradient(var(--burst-a) 0 3deg, var(--burst-b) 3deg 6deg);
+  box-shadow: inset 0 0 0 calc(var(--u) * .012) var(--ink, #f6f3e8);
+  content: "";
+}
+.coin.mercy::after {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    linear-gradient(115deg, transparent 0 30%, #ffffff44 30.3% 30.7%, transparent 31%),
+    linear-gradient(65deg, transparent 0 68%, #ffffff33 68.3% 68.6%, transparent 68.9%);
+  content: "";
+  pointer-events: none;
+}
+.coin.mercy .logo {
+  position: absolute;
+  z-index: 3;
+  top: 7%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: calc(var(--u) * .02) solid var(--coin-black);
+  border-top: 0;
+  border-radius: 0 0 calc(var(--u) * .06) calc(var(--u) * .06);
+  padding: 0 calc(var(--u) * .035);
+  background: var(--coin-black);
+  color: var(--yellow);
+  font-size: calc(var(--u) * .17);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: calc(var(--u) * .005);
+  line-height: 1.1;
+  text-shadow: 0 1px 0 #0008;
+}
+.coin.mercy .mask {
+  position: absolute;
+  z-index: 2;
+  top: 24%;
+  left: 26%;
+  width: 48%;
+  height: 54%;
+  border: calc(var(--u) * .03) solid var(--coin-black);
+  border-radius: 12% 12% 50% 50% / 8% 8% 42% 42%;
+  background: linear-gradient(100deg, var(--mask-white) 0 52%, var(--mask-gray) 52.5%);
+  box-shadow: 0 0 0 calc(var(--u) * .012) var(--ink, #f6f3e8), 0 2px 4px #0006;
+}
+.coin.mercy .eye {
+  position: absolute;
+  top: 32%;
+  width: 26%;
+  height: 14%;
+  border-top: calc(var(--u) * .04) solid var(--coin-black);
+  border-radius: 100% 100% 0 0 / 130% 130% 0 0;
+}
+.coin.mercy .eye.left { left: 12%; transform: rotate(-4deg); }
+.coin.mercy .eye.right { right: 12%; transform: rotate(4deg); }
+.coin.mercy .eye::before,
+.coin.mercy .eye::after {
+  position: absolute;
+  left: 50%;
+  width: calc(var(--u) * .015);
+  background: var(--coin-black);
+  content: "";
+}
+.coin.mercy .eye::before { top: -150%; height: 70%; }
+.coin.mercy .eye::after { top: 20%; height: 220%; }
+.coin.mercy .mouth {
+  position: absolute;
+  right: 6%;
+  bottom: 8%;
+  left: 6%;
+  height: 34%;
+  border-radius: 0 0 50% 50% / 0 0 95% 95%;
+  background: var(--coin-black);
+}
+.coin.mercy .mouth::before,
+.coin.mercy .mouth::after {
+  position: absolute;
+  top: -22%;
+  width: 22%;
+  height: 40%;
+  background: var(--coin-black);
+  content: "";
+}
+.coin.mercy .mouth::before { left: -2%; clip-path: polygon(0 0, 100% 50%, 100% 100%, 30% 100%); }
+.coin.mercy .mouth::after { right: -2%; clip-path: polygon(100% 0, 0 50%, 0 100%, 70% 100%); }
+.coin.mercy .mouth b {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: calc(var(--u) * .22);
+  font-style: normal;
+  line-height: 1;
+}
+.coin.mercy.playable { outline: 3px solid var(--yellow); outline-offset: 2px; cursor: pointer; }
+.coin.mercy.selected { box-shadow: 0 0 0 4px #49e8d0, 0 3px 8px #0007; }
 .opponent {
   position: absolute;
   z-index: 1;

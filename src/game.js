@@ -90,6 +90,7 @@ export function deal(room, getRandomInt = randomInt) {
   game.challenge = null;
   game.revealedHand = null;
   game.eliminated = [];
+  game.mercyPlayer = -1;
   game.phase = 'play';
   game.message = `Rodada ${room.round + 1}. Vez de ${room.seats[game.current].name}.`;
   room.game = game;
@@ -108,11 +109,22 @@ export function endRound(room, player) {
 
 export function checkMercy(room, player) {
   const game = room.game;
-  if (game.hands[player].length < 25 || game.eliminated.includes(player)) return false;
+  if (game.hands[player].length < 25 || game.eliminated.includes(player) || game.mercyPlayer >= 0) return false;
+  game.mercyPlayer = player;
+  game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`;
+  return true;
+}
+
+export function confirmMercy(room, player) {
+  const game = room.game;
+  if (game.mercyPlayer !== player) throw new Error('Você não pode confirmar a Regra da Misericórdia.');
   game.eliminated.push(player);
+  game.mercyPlayer = -1;
   game.unoPlayer = game.unoPlayer === player ? -1 : game.unoPlayer;
   game.message = `${room.seats[player].name} foi eliminado pela Regra da Misericórdia.`;
-  return true;
+  if (finishIfLastPlayer(room)) return true;
+  game.current = nextSeat(room, game, player);
+  return false;
 }
 
 export function finishIfLastPlayer(room) {
@@ -252,7 +264,9 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
       game.unoToken = (game.unoToken ?? 0) + 1;
     }
   }
-  game.message = message;
+  game.message = game.mercyPlayer === player
+    ? `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`
+    : message;
   game.current = nextSeat(room, game, player, advance);
 }
 
@@ -285,14 +299,13 @@ export function drawRouletteCard(room, getRandomInt = randomInt) {
 
   const targetName = room.seats[target].name;
   game.challenge = null;
-  if (checkMercy(room, target) && finishIfLastPlayer(room)) return;
+  const mercyPending = checkMercy(room, target);
   game.current = nextSeat(room, game, target);
-  game.message = drawnCard?.color === color
-    ? `${targetName} encontrou ${colorNames[color]} e perdeu a vez.`
-    : `${targetName} não tinha mais cartas para comprar e perdeu a vez.`;
-  if (checkMercy(room, target) && finishIfLastPlayer(room)) return;
-  game.current = nextSeat(room, game, target);
-  game.message = `${targetName} revelou cartas até encontrar ${colorNames[color]} e perdeu a vez.`;
+  game.message = mercyPending
+    ? `${targetName} chegou a 25 cartas. Confirme a Regra da Misericórdia.`
+    : drawnCard?.color === color
+      ? `${targetName} encontrou ${colorNames[color]} e perdeu a vez.`
+      : `${targetName} não tinha mais cartas para comprar e perdeu a vez.`;
 }
 
 export function pickBotColor(hand, getRandomInt = randomInt) {
@@ -316,7 +329,9 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
       checkMercy(room, player);
       if (finishIfLastPlayer(room)) return;
       game.current = nextSeat(room, game, player);
-      game.message = `${room.seats[player].name} comprou ${count} cartas.`;
+      game.message = game.mercyPlayer === player
+        ? `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`
+        : `${room.seats[player].name} comprou ${count} cartas.`;
       return;
     }
     let drawn;
@@ -329,7 +344,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
     if (checkMercy(room, player)) {
       if (finishIfLastPlayer(room)) return;
       game.current = nextSeat(room, game, player);
-      game.message = `${room.seats[player].name} foi eliminado pela Regra da Misericórdia.`;
+      game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`;
       return;
     }
     if (drawn && canPlay(game, drawn)) {
@@ -370,9 +385,11 @@ export function resolveUnoPenalty(room, getRandomInt = randomInt) {
   const player = game.unoPlayer;
   game.unoPlayer = -1;
   drawCards(game, player, 2, getRandomInt);
-  checkMercy(room, player);
+  const mercyPending = checkMercy(room, player);
   if (finishIfLastPlayer(room)) return true;
-  game.message = `${room.seats[player].name} esqueceu o UNO e comprou 2 cartas.`;
+  game.message = mercyPending
+    ? `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`
+    : `${room.seats[player].name} esqueceu o UNO e comprou 2 cartas.`;
   return false;
 }
 

@@ -3,6 +3,7 @@ import {
   canPlay,
   cardValue,
   checkMercy,
+  confirmMercy,
   deal,
   drawCards,
   drawRouletteCard,
@@ -36,6 +37,7 @@ function createRoom(count = 3) {
       unoPlayer: -1,
       challenge: null,
       eliminated: [],
+      mercyPlayer: -1,
       phase: 'play',
       message: '',
     },
@@ -335,14 +337,30 @@ describe('regras das cartas', () => {
     expect(room.game.message).toContain('foi eliminado');
   });
 
-  it('elimina com 25 cartas e mantém um jogador com 24 cartas ativo', () => {
+  it('aguarda a confirmação para eliminar com 25 cartas e mantém um jogador com 24 cartas ativo', () => {
     const room = createRoom(3);
     room.game.hands[0] = Array.from({ length: 24 }, (_, index) => card('red', '1', index));
     expect(checkMercy(room, 0)).toBe(false);
     room.game.hands[0].push(card('blue', '2', 25));
     expect(checkMercy(room, 0)).toBe(true);
     expect(checkMercy(room, 0)).toBe(false);
+    expect(room.game.eliminated).toEqual([]);
+    expect(room.game.mercyPlayer).toBe(0);
+    expect(() => confirmMercy(room, 1)).toThrow('Você não pode confirmar a Regra da Misericórdia.');
+    expect(confirmMercy(room, 0)).toBe(false);
     expect(room.game.eliminated).toEqual([0]);
+    expect(room.game.mercyPlayer).toBe(-1);
+    expect(room.game.current).toBe(1);
+  });
+
+  it('encerra a rodada ao confirmar a eliminação do penúltimo jogador', () => {
+    const room = createRoom(2);
+    room.game.hands[0] = Array.from({ length: 25 }, (_, index) => card('red', '1', index));
+    room.game.mercyPlayer = 0;
+
+    expect(confirmMercy(room, 0)).toBe(true);
+    expect(room.game.phase).toBe('over');
+    expect(room.game.winner).toBe(1);
   });
 
   it('calcula valores de cartas numéricas, ações coloridas e curingas', () => {
@@ -420,7 +438,8 @@ describe('simulação em massa', () => {
       let turns = 0;
       while (room.game.phase === 'play' && turns < 2000) {
         const game = room.game;
-        if (game.challenge?.type === 'roulette') {
+        if (game.mercyPlayer >= 0) confirmMercy(room, game.mercyPlayer);
+        else if (game.challenge?.type === 'roulette') {
           if (game.challenge.color) drawRouletteCard(room, getRandomInt);
           else resolveRoulette(room, ['red', 'yellow', 'green', 'blue'][getRandomInt(4)]);
         }
