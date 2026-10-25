@@ -43,11 +43,13 @@ function createRoom(count = 3) {
 }
 
 describe('baralho e distribuição', () => {
-  it('cria um baralho de 168 cartas com identificadores únicos e as quantidades corretas', () => {
+  it('cria um baralho de 174 cartas com identificadores únicos e as quantidades corretas', () => {
     const deck = makeDeck();
-    expect(deck).toHaveLength(168);
-    expect(new Set(deck.map(({ id }) => id)).size).toBe(168);
+    expect(deck).toHaveLength(174);
+    expect(new Set(deck.map(({ id }) => id)).size).toBe(174);
     expect(deck.filter(({ color, value }) => color === 'wild' && value === 'roulette')).toHaveLength(4);
+    expect(deck.filter(({ color, value }) => color === 'wild' && value === 'attackFinal')).toHaveLength(2);
+    expect(deck.filter(({ color, value }) => color === 'wild' && value === 'w8rev')).toHaveLength(4);
     expect(deck.filter(({ color, value }) => color === 'red' && value === '7')).toHaveLength(3);
     expect(deck.filter(({ color, value }) => color === 'red' && value === 'discardAll')).toHaveLength(2);
   });
@@ -58,7 +60,7 @@ describe('baralho e distribuição', () => {
     expect(room.game.hands.map((hand) => hand.length)).toEqual(Array(7).fill(7));
     expect(Number.isNaN(Number(room.game.discard[0].value))).toBe(false);
     expect(room.game.discard[0].color).not.toBe('wild');
-    expect(room.game.deck.length + room.game.discard.length + room.game.hands.flat().length).toBe(168);
+    expect(room.game.deck.length + room.game.discard.length + room.game.hands.flat().length).toBe(174);
   });
 
   it('não fabrica cartas quando o baralho e a pilha de descarte acabam', () => {
@@ -80,12 +82,18 @@ describe('regras das cartas', () => {
     expect(canPlay(game, card('blue', '1', 2))).toBe(true);
     expect(canPlay(game, card('blue', '+2', 3))).toBe(false);
     expect(canPlay(game, card('wild', 'w6', 4))).toBe(true);
+    expect(canPlay(game, card('wild', 'w8rev', 8))).toBe(true);
     game.stack = 6;
     game.stackLast = 4;
     expect(canPlay(game, card('wild', 'w6', 5))).toBe(true);
+    expect(canPlay(game, card('wild', 'w8rev', 9))).toBe(true);
     expect(canPlay(game, card('wild', 'w10', 6))).toBe(true);
     game.stackLast = 6;
     expect(canPlay(game, card('wild', 'w4', 7))).toBe(false);
+    expect(canPlay(game, card('wild', 'w6', 10))).toBe(true);
+    game.stackLast = 8;
+    expect(canPlay(game, card('wild', 'w6', 10))).toBe(false);
+    expect(canPlay(game, card('wild', 'w8rev', 11))).toBe(true);
   });
 
   it('empilha penalidades e o próximo jogador compra a soma ao não conseguir responder', () => {
@@ -98,6 +106,25 @@ describe('regras das cartas', () => {
     playCard(room, 1, 3, 'blue');
     expect(room.game.stack).toBe(8);
     expect(room.game.stackLast).toBe(6);
+  });
+
+  it('Coringa Inverter +8 inverte o sentido e permite empilhar penalidades', () => {
+    const room = createRoom(4);
+    room.game.hands[0] = [card('wild', 'w8rev', 1), card('red', '4', 2)];
+    room.game.hands[3] = [card('wild', 'w10', 3), card('blue', '2', 4)];
+
+    playCard(room, 0, 1, 'blue');
+    expect(room.game.direction).toBe(-1);
+    expect(room.game.stack).toBe(8);
+    expect(room.game.stackLast).toBe(8);
+    expect(room.game.current).toBe(3);
+    expect(canPlay(room.game, card('wild', 'w6', 5))).toBe(false);
+
+    playCard(room, 3, 3, 'yellow');
+    expect(room.game.direction).toBe(-1);
+    expect(room.game.stack).toBe(18);
+    expect(room.game.stackLast).toBe(10);
+    expect(room.game.current).toBe(2);
   });
 
   it('Pular avança dois assentos e Inverter muda o sentido', () => {
@@ -210,6 +237,52 @@ describe('regras das cartas', () => {
     expect(room.game.challenge).toBeNull();
   });
 
+  it('Coringa Ataque Final revela a mão, faz o alvo comprar pelas cartas de ação e o pula', () => {
+    const room = createRoom(3);
+    room.game.hands[0] = [
+      card('wild', 'attackFinal', 1),
+      card('red', 'skip', 2),
+      card('wild', 'w4', 3),
+      card('blue', '5', 4),
+    ];
+    room.game.hands[1] = [card('green', '2', 5)];
+    room.game.deck = [card('yellow', '1', 6), card('green', '3', 7)];
+
+    playCard(room, 0, 1);
+
+    expect(room.game.hands[1].map(({ id }) => id)).toEqual([5, 7, 6]);
+    expect(room.game.current).toBe(2);
+    expect(room.game.revealedHand).toMatchObject({
+      player: 0,
+      actionCount: 2,
+      cards: [card('red', 'skip', 2), card('wild', 'w4', 3), card('blue', '5', 4)],
+    });
+    expect(room.game.message).toContain('comprou 2 cartas');
+  });
+
+  it('elimina o alvo quando o Ataque Final revela sete ou mais cartas de ação ou curingas', () => {
+    const room = createRoom(3);
+    room.game.hands[0] = [
+      card('wild', 'attackFinal', 1),
+      card('red', 'skip', 2),
+      card('red', 'rev', 3),
+      card('red', '+2', 4),
+      card('red', 'discardAll', 5),
+      card('red', 'skipAll', 6),
+      card('wild', 'w4', 7),
+      card('wild', 'roulette', 8),
+    ];
+    room.game.deck = Array.from({ length: 7 }, (_, index) => card('blue', String(index + 1), index + 10));
+
+    playCard(room, 0, 1);
+
+    expect(room.game.hands[1]).toHaveLength(7);
+    expect(room.game.eliminated).toContain(1);
+    expect(room.game.current).toBe(2);
+    expect(room.game.revealedHand.actionCount).toBe(7);
+    expect(room.game.message).toContain('foi eliminado');
+  });
+
   it('elimina com 25 cartas e mantém um jogador com 24 cartas ativo', () => {
     const room = createRoom(3);
     room.game.hands[0] = Array.from({ length: 24 }, (_, index) => card('red', '1', index));
@@ -304,7 +377,7 @@ describe('simulação em massa', () => {
         turns++;
 
         const cardsInPlay = game.deck.length + game.discard.length + game.hands.reduce((total, hand) => total + hand.length, 0);
-        expect(cardsInPlay, `partida ${match + 1}, turno ${turns}`).toBe(168);
+        expect(cardsInPlay, `partida ${match + 1}, turno ${turns}`).toBe(174);
         expect(game.phase !== 'play' || game.current === -1 || !game.eliminated.includes(game.current), `turno ${turns} de jogador eliminado`).toBe(true);
       }
       expect(room.game.phase, `partida ${match + 1} não terminou em 2000 turnos`).toBe('over');

@@ -90,6 +90,45 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 12, color: 'blue' }]);
   });
 
+  it('permite escolher uma cor ao jogar o Coringa Inverter +8', () => {
+    renderGame(gameState({ hand: [{ color: 'wild', value: 'w8rev', id: 18 }] }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Coringa Inverter Comprar 8' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Verde' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 18, color: 'green' }]);
+  });
+
+  it('joga o Coringa Ataque Final sem pedir escolha de cor', () => {
+    renderGame(gameState({ hand: [{ color: 'wild', value: 'attackFinal', id: 31 }] }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Coringa Ataque Final' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 31 }]);
+  });
+
+  it('exibe a mão revelada pelo Ataque Final e permite continuar', () => {
+    renderGame(gameState({
+      game: {
+        revealedHand: {
+          playerId: 'p1',
+          playerName: 'Beto',
+          actionCount: 2,
+          cards: [
+            { color: 'red', value: 'skip', id: 32 },
+            { color: 'wild', value: 'w4', id: 33 },
+          ],
+        },
+      },
+    }));
+
+    expect(screen.getByRole('heading', { name: 'Beto revelou a mão' })).toBeTruthy();
+    expect(screen.getByLabelText('Vermelho Pular')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:reveal:dismiss', undefined]);
+  });
+
   it('solicita a escolha de outro jogador ao jogar um 7', () => {
     renderGame(gameState({ hand: [{ color: 'red', value: '7', id: 17 }] }));
 

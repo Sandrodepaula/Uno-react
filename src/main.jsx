@@ -5,17 +5,18 @@ import './style.css';
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
 const COLOR_NAMES = { red: 'Vermelho', yellow: 'Amarelo', green: 'Verde', blue: 'Azul' };
-const SYMBOLS = { skip: '⊘', rev: '⇄', '+2': '+2', discardAll: 'D', skipAll: '⊘ALL', w: '★', w4: '+4', w6: '+6', w10: '+10', roulette: 'R' };
-const CARD_NAMES = { skip: 'Pular', rev: 'Inverter', '+2': 'Comprar 2', discardAll: 'Descartar Tudo', skipAll: 'Pular Todos', w4: 'Inverter Comprar 4', w6: 'Comprar 6', w10: 'Comprar 10', roulette: 'Roleta Colorida' };
-const DRAW_VALUES = { '+2': 2, w4: 4, w6: 6, w10: 10 };
+const SYMBOLS = { skip: '⊘', rev: '⇄', '+2': '+2', discardAll: 'D', skipAll: '⊘ALL', w: '★', w4: '+4', w6: '+6', w8rev: '⇄', w10: '+10', roulette: 'R', attackFinal: '+' };
+const CARD_NAMES = { skip: 'Pular', rev: 'Inverter', '+2': 'Comprar 2', discardAll: 'Descartar Tudo', skipAll: 'Pular Todos', w4: 'Inverter Comprar 4', w6: 'Comprar 6', w8rev: 'Inverter Comprar 8', w10: 'Comprar 10', roulette: 'Roleta Colorida', attackFinal: 'Ataque Final' };
+const DRAW_VALUES = { '+2': 2, w4: 4, w6: 6, w8rev: 8, w10: 10 };
 const socket = io();
 
 export function Card({ card, back = false, playable = false, selected = false, onClick, pop = false }) {
   const label = back ? (playable ? 'Comprar do baralho' : 'Carta fechada') : `${card.color === 'wild' ? 'Coringa' : COLOR_NAMES[card.color]} ${CARD_NAMES[card.value] ?? card.value}`;
   const symbol = back ? 'UNO' : (SYMBOLS[card.value] ?? card.value);
+  const draw8Reverse = !back && card.value === 'w8rev';
   return (
     <div
-      className={`card ${back ? 'back' : card.color} ${playable ? 'playable' : ''} ${selected ? 'selected' : ''} ${pop ? 'pop' : ''}`}
+      className={`card ${back ? 'back' : card.color} ${!back && card.value === 'attackFinal' ? 'attack-final' : ''} ${draw8Reverse ? 'draw8-reverse' : ''} ${playable ? 'playable' : ''} ${selected ? 'selected' : ''} ${pop ? 'pop' : ''}`}
       role={playable ? 'button' : undefined}
       tabIndex={playable ? 0 : undefined}
       aria-label={label}
@@ -27,9 +28,11 @@ export function Card({ card, back = false, playable = false, selected = false, o
         }
       } : undefined}
     >
-      <span className="corner top">{symbol}</span>
-      <i className="oval"><b>{symbol}</b></i>
-      <span className="corner bottom">{symbol}</span>
+      <span className="corner top">{draw8Reverse ? <><em>⇄</em><strong>+8</strong></> : symbol}</span>
+      <i className="oval">
+        <b>{draw8Reverse ? Array.from({ length: 7 }, (_, index) => <i key={index} />) : symbol}</b>
+      </i>
+      <span className="corner bottom">{draw8Reverse ? <><em>⇄</em><strong>+8</strong></> : symbol}</span>
     </div>
   );
 }
@@ -78,7 +81,7 @@ export function App() {
       setPendingCard(card);
       setSelectedDiscardIds([]);
       setShowDiscard(true);
-    } else if (card.color === 'wild' && card.value !== 'roulette') {
+    } else if (card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value)) {
       setPendingCard(card);
       setShowColor(true);
     } else send('game:play', { cardId: card.id });
@@ -179,6 +182,22 @@ export function App() {
               return <Card key={card.id} card={card} playable={playable} onClick={() => chooseCard(card)} />;
             })}
           </section>
+
+          {game?.phase === 'play' && game.revealedHand && (
+            <div className="overlay">
+              <section className="panel reveal-panel" role="dialog" aria-modal="true" aria-labelledby="revealed-hand-title">
+                <h2 id="revealed-hand-title">{game.revealedHand.playerName} revelou a mão</h2>
+                <p>
+                  O alvo comprou {game.revealedHand.actionCount} carta{game.revealedHand.actionCount === 1 ? '' : 's'}
+                  {game.revealedHand.actionCount >= 7 ? ' e foi eliminado.' : ' e perdeu a vez.'}
+                </p>
+                <div className="hand revealed-hand" aria-label="Mão revelada">
+                  {game.revealedHand.cards.map((card) => <Card key={card.id} card={card} />)}
+                </div>
+                <button className="primary" onClick={() => send('game:reveal:dismiss')}>Continuar</button>
+              </section>
+            </div>
+          )}
 
           {game?.challenge?.type === 'roulette' && game.challenge.targetId === state.playerId && (
             <div className="overlay">

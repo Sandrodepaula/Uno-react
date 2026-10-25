@@ -69,6 +69,12 @@ function publicView(room, playerId) {
         targetId: room.seats[game.challenge.target].id,
         color: game.challenge.color ?? null,
       } : null,
+      revealedHand: game.revealedHand ? {
+        playerId: room.seats[game.revealedHand.player].id,
+        playerName: room.seats[game.revealedHand.player].name,
+        cards: game.revealedHand.cards,
+        actionCount: game.revealedHand.actionCount,
+      } : null,
       unoAvailable: player >= 0 && game.unoPlayer === player,
       winner: game.winner,
       points: game.points,
@@ -231,6 +237,7 @@ io.on('connection', (socket) => {
     const game = requireTurn(room, player);
     if (game.drawn != null) throw new Error('Passe a vez após comprar uma carta.');
     if (game.stack) {
+      game.revealedHand = null;
       const count = game.stack;
       game.stack = 0;
       game.stackLast = 0;
@@ -243,6 +250,7 @@ io.on('connection', (socket) => {
       game.current = nextSeat(room, game, player);
       game.message = `${room.seats[player].name} comprou ${count} cartas.`;
     } else {
+      game.revealedHand = null;
       let card;
       const handLength = game.hands[player].length;
       drawCards(game, player, 1);
@@ -270,6 +278,7 @@ io.on('connection', (socket) => {
     const player = requirePlayer(socket, room);
     const game = requireTurn(room, player);
     if (game.drawn == null) throw new Error('Compre uma carta antes de passar a vez.');
+    game.revealedHand = null;
     game.drawn = null;
     game.current = nextSeat(room, game, player);
     game.message = `${room.seats[player].name} passou a vez.`;
@@ -283,6 +292,14 @@ io.on('connection', (socket) => {
     if (!game || game.phase !== 'play' || game.unoPlayer !== player) throw new Error('Não há UNO para confirmar.');
     game.unoPlayer = -1;
     game.message = `${room.seats[player].name}: UNO!`;
+    update(room);
+  }));
+
+  socket.on('game:reveal:dismiss', handle(socket, () => {
+    const room = requireRoom(socket);
+    requirePlayer(socket, room);
+    if (!room.game?.revealedHand) throw new Error('Não há uma mão revelada.');
+    room.game.revealedHand = null;
     update(room);
   }));
 

@@ -2,7 +2,8 @@ import { randomInt } from 'node:crypto';
 
 export const colors = ['red', 'yellow', 'green', 'blue'];
 export const colorNames = { red: 'vermelho', yellow: 'amarelo', green: 'verde', blue: 'azul' };
-export const drawValues = { '+2': 2, w4: 4, w6: 6, w10: 10 };
+export const drawValues = { '+2': 2, w4: 4, w6: 6, w8rev: 8, w10: 10 };
+const actionValues = new Set(['skip', 'rev', '+2', 'discardAll', 'skipAll', 'w4', 'w6', 'w10', 'roulette', 'attackFinal']);
 
 export function makeDeck() {
   const deck = [];
@@ -17,8 +18,9 @@ export function makeDeck() {
     }
   }
   for (let copy = 0; copy < 4; copy++) {
-    for (const value of ['w4', 'w6', 'w10', 'roulette']) deck.push({ color: 'wild', value, id: id++ });
+    for (const value of ['w4', 'w6', 'w8rev', 'w10', 'roulette']) deck.push({ color: 'wild', value, id: id++ });
   }
+  for (let copy = 0; copy < 2; copy++) deck.push({ color: 'wild', value: 'attackFinal', id: id++ });
   return deck;
 }
 
@@ -84,6 +86,7 @@ export function deal(room, getRandomInt = randomInt) {
   game.drawn = null;
   game.unoPlayer = -1;
   game.challenge = null;
+  game.revealedHand = null;
   game.eliminated = [];
   game.phase = 'play';
   game.message = `Rodada ${room.round + 1}. Vez de ${room.seats[game.current].name}.`;
@@ -124,7 +127,7 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
   if (cardIndex < 0) throw new Error('Essa carta não está na sua mão.');
   const card = hand[cardIndex];
   if (!canPlay(game, card) || (game.drawn != null && game.drawn !== card.id)) throw new Error('Essa carta não pode ser jogada agora.');
-  if (card.color === 'wild' && card.value !== 'roulette' && !colors.includes(chosenColor)) throw new Error('Escolha uma cor válida.');
+  if (card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value) && !colors.includes(chosenColor)) throw new Error('Escolha uma cor válida.');
   if (card.value === '7' && (!Number.isInteger(targetPlayer) || targetPlayer === player || game.eliminated.includes(targetPlayer) || !game.hands[targetPlayer])) {
     throw new Error('Escolha outro jogador que ainda esteja na partida.');
   }
@@ -141,15 +144,16 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
   }
 
   hand.splice(cardIndex, 1);
+  game.revealedHand = null;
   game.discard.push(card);
-  game.color = card.color === 'wild' && card.value !== 'roulette'
+  game.color = card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value)
     ? chosenColor
     : card.color === 'wild' ? game.color : card.color;
   game.drawn = null;
 
   let advance = 1;
   let message = `${room.seats[player].name} jogou.`;
-  if (card.color === 'wild' && card.value !== 'roulette') message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]}.`;
+  if (card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value)) message = `${room.seats[player].name} escolheu ${colorNames[chosenColor]}.`;
   if (card.value === 'skip') {
     advance = 2;
     message = `${room.seats[nextSeat(room, game, player)].name} perdeu a vez.`;
@@ -175,10 +179,10 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     [game.hands[player], game.hands[targetPlayer]] = [game.hands[targetPlayer], game.hands[player]];
     message = `${room.seats[player].name} trocou as cartas com ${room.seats[targetPlayer].name}.`;
   } else if (drawValues[card.value]) {
-    if (card.value === 'w4') {
+    if (card.value === 'w4' || card.value === 'w8rev') {
       game.direction *= -1;
-      message = 'O sentido do jogo inverteu.';
-      if (room.seats.length === 2) {
+      message = card.value === 'w8rev' ? 'O sentido do jogo inverteu.' : message;
+      if (card.value === 'w4' && room.seats.length === 2) {
         drawCards(game, player, 4, getRandomInt);
         checkMercy(room, player);
         advance = 0;
@@ -195,6 +199,20 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     game.current = -1;
     game.message = `${room.seats[target].name} deve escolher uma cor para a Roleta Colorida.`;
     return;
+  } else if (card.value === 'attackFinal') {
+    const target = nextSeat(room, game, player);
+    const actionCount = hand.filter((other) => other.color === 'wild' || actionValues.has(other.value)).length;
+    game.revealedHand = { player, cards: hand.slice(), actionCount };
+    drawCards(game, target, actionCount, getRandomInt);
+    if (actionCount >= 7 && !game.eliminated.includes(target)) {
+      game.eliminated.push(target);
+      game.unoPlayer = game.unoPlayer === target ? -1 : game.unoPlayer;
+    } else checkMercy(room, target);
+    if (game.eliminated.includes(target) && finishIfLastPlayer(room)) return;
+    advance = game.eliminated.includes(target) ? 1 : 2;
+    message = actionCount >= 7
+      ? `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} comprou ${actionCount} cartas e foi eliminado.`
+      : `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} comprou ${actionCount} carta${actionCount === 1 ? '' : 's'} e perdeu a vez.`;
   }
 
   if (game.phase !== 'play') return;
@@ -295,7 +313,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
       return;
     }
     if (drawn && canPlay(game, drawn)) {
-      playCard(room, player, drawn.id, drawn.color === 'wild' && drawn.value !== 'roulette' ? pickBotColor(hand, getRandomInt) : undefined,
+          playCard(room, player, drawn.id, drawn.color === 'wild' && !['roulette', 'attackFinal'].includes(drawn.value) ? pickBotColor(hand, getRandomInt) : undefined,
         drawn.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined, getRandomInt);
       return;
     }
@@ -308,7 +326,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
   const actionCards = pool.filter((card) => Number.isNaN(Number(card.value)));
   const choices = actionCards.length && random() < 0.6 ? actionCards : pool;
   const card = choices[getRandomInt(choices.length)];
-  playCard(room, player, card.id, card.color === 'wild' && card.value !== 'roulette' ? pickBotColor(hand, getRandomInt) : undefined,
+  playCard(room, player, card.id, card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value) ? pickBotColor(hand, getRandomInt) : undefined,
     card.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined, getRandomInt);
 }
 

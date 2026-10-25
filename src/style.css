@@ -12,6 +12,10 @@
   --green: #2f9a1b;
   --blue: #0a5fb4;
   --card-width: clamp(52px, 13.5vw, 68px);
+  --flame-core: #ffd23a;
+  --flame-mid: #f5a300;
+  --flame-edge: #e8620c;
+  --attack-black: #0d0d0d;
 }
 
 * { box-sizing: border-box; }
@@ -94,9 +98,182 @@ h1 {
 .card.wild .oval { background: conic-gradient(var(--red) 0 25%, var(--yellow) 0 50%, var(--green) 0 75%, var(--blue) 0); }
 .card .oval b { transform: rotate(24deg); color: var(--card-color); font-size: calc(var(--card-width) * .46); line-height: 1; }
 .card.wild .oval b { color: white; text-shadow: 0 0 4px black, 0 0 2px black; }
+.card.attack-final {
+  --card-color: white;
+  --u: var(--card-width);
+  overflow: hidden;
+  background: var(--attack-black);
+}
+.card.attack-final .oval {
+  inset: 14% -6% 6% 2%;
+  transform: rotate(-38deg);
+  border-radius: 50% / 60% 60% 40% 40%;
+  background:
+    radial-gradient(ellipse at 30% 75%, var(--flame-edge) 0 25%, transparent 60%),
+    radial-gradient(ellipse at 55% 45%, var(--flame-core) 0 30%, transparent 70%),
+    linear-gradient(200deg, var(--flame-mid), var(--flame-edge));
+  box-shadow: inset calc(var(--u) * .05) calc(var(--u) * .03) 0 white, 0 0 calc(var(--u) * .18) #ffb30088;
+}
+.card.attack-final .oval::before {
+  position: absolute;
+  top: -40%;
+  left: 30%;
+  width: 45%;
+  height: 70%;
+  border-radius: 50% 50% 10% 10%;
+  background: linear-gradient(to top, var(--flame-mid), #ffd23a00);
+  filter: blur(1px);
+  content: "";
+}
+.card.attack-final .oval b {
+  position: relative;
+  width: calc(var(--u) * .62);
+  height: calc(var(--u) * .62);
+  transform: rotate(38deg);
+  font-size: 0;
+}
+.card.attack-final .oval b::before,
+.card.attack-final .oval b::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: calc(var(--u) * .012) solid #00000033;
+  background: white;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 3px #0006;
+  content: "";
+}
+.card.attack-final .oval b::before { width: 100%; height: 26%; }
+.card.attack-final .oval b::after { width: 26%; height: 100%; }
+.card.attack-final::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  --s: calc(var(--u) * .2);
+  --t: calc(var(--u) * .045);
+  background:
+    linear-gradient(white, white) calc(20% - var(--s) / 2) calc(20% - var(--t) / 2) / var(--s) var(--t) no-repeat,
+    linear-gradient(white, white) calc(20% - var(--t) / 2) calc(20% - var(--s) / 2) / var(--t) var(--s) no-repeat,
+    linear-gradient(white, white) calc(38% - var(--s) / 4) calc(15% - var(--t) / 4) / calc(var(--s) / 2) calc(var(--t) / 2) no-repeat,
+    linear-gradient(white, white) calc(38% - var(--t) / 4) calc(15% - var(--s) / 4) / calc(var(--t) / 2) calc(var(--s) / 2) no-repeat,
+    linear-gradient(#ffffffcc, #ffffffcc) calc(62% - var(--s) / 2) calc(32% - var(--t) / 2) / var(--s) var(--t) no-repeat,
+    linear-gradient(#ffffffcc, #ffffffcc) calc(62% - var(--t) / 2) calc(32% - var(--s) / 2) / var(--t) var(--s) no-repeat,
+    linear-gradient(white, white) calc(82% - var(--s) / 2) calc(86% - var(--t) / 2) / var(--s) var(--t) no-repeat,
+    linear-gradient(white, white) calc(82% - var(--t) / 2) calc(86% - var(--s) / 2) / var(--t) var(--s) no-repeat,
+    linear-gradient(#ffffff66, #ffffff66) calc(80% - var(--s) / 4) calc(10% - var(--t) / 4) / calc(var(--s) / 2) calc(var(--t) / 2) no-repeat,
+    linear-gradient(#ffffff66, #ffffff66) calc(80% - var(--t) / 4) calc(10% - var(--s) / 4) / calc(var(--t) / 2) calc(var(--s) / 2) no-repeat;
+  content: "";
+}
+.card.attack-final::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 28%, #ffffff55 28.3% 28.8%, transparent 29.1%),
+    linear-gradient(70deg, transparent 0 62%, #ffffff44 62.3% 62.7%, transparent 63%),
+    linear-gradient(160deg, transparent 0 48%, #ffffff33 48.2% 48.5%, transparent 48.8%);
+  content: "";
+}
+.card.attack-final .corner { z-index: 2; font-style: normal; font-size: calc(var(--u) * .2); }
+.card.attack-final .corner.top { top: auto; bottom: 4%; left: 8%; transform: none; }
+.card.attack-final .corner.bottom { display: none; }
 .corner { position: absolute; z-index: 1; font-size: calc(var(--card-width) * .2); line-height: 1; text-shadow: 0 1px 2px #0008; }
 .corner.top { top: 4%; left: 8%; }
 .corner.bottom { right: 8%; bottom: 4%; transform: rotate(180deg); }
+.card.draw8-reverse {
+  --card-color: white;
+  --u: var(--card-width);
+  overflow: hidden;
+  background: var(--attack-black, #0d0d0d);
+}
+.card.draw8-reverse .oval {
+  inset: 10% 3% 12% 3%;
+  transform: rotate(-24deg);
+  background: white;
+  box-shadow: 0 0 0 calc(var(--u) * .015) #00000055;
+  overflow: hidden;
+}
+.card.draw8-reverse .oval b {
+  position: relative;
+  width: calc(var(--u) * .8);
+  height: calc(var(--u) * 1.15);
+  transform: rotate(24deg);
+  font-size: 0;
+}
+.card.draw8-reverse .oval b i {
+  position: absolute;
+  width: 26%;
+  height: 31%;
+  border: calc(var(--u) * .02) solid white;
+  border-radius: calc(var(--u) * .05);
+  box-shadow: 0 1px 3px #0007;
+}
+.card.draw8-reverse .oval b i:nth-child(1) { left: 2%; top: 66%; background: var(--yellow); }
+.card.draw8-reverse .oval b i:nth-child(2) { left: 0; top: 38%; background: var(--red); }
+.card.draw8-reverse .oval b i:nth-child(3) { left: 24%; top: 10%; background: var(--yellow); }
+.card.draw8-reverse .oval b i:nth-child(4) { left: 46%; top: 6%; background: var(--blue); }
+.card.draw8-reverse .oval b i:nth-child(5) { left: 27%; top: 58%; background: var(--blue); }
+.card.draw8-reverse .oval b i:nth-child(6) { left: 50%; top: 52%; background: var(--green); }
+.card.draw8-reverse .oval b i:nth-child(7) { left: 68%; top: 22%; background: var(--red); }
+.card.draw8-reverse .oval b i::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28%;
+  height: 20%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: #ffffff66;
+  content: "";
+}
+.card.draw8-reverse .oval::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%) rotate(-16deg);
+  color: white;
+  font-size: calc(var(--u) * .95);
+  font-style: normal;
+  line-height: 1;
+  text-shadow:
+    calc(var(--u) * .02) 0 0 #111, calc(var(--u) * -.02) 0 0 #111,
+    0 calc(var(--u) * .02) 0 #111, 0 calc(var(--u) * -.02) 0 #111,
+    0 3px 6px #0008;
+  content: "⇄";
+}
+.card.draw8-reverse::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 22%, #ffffff55 22.3% 22.8%, transparent 23.1%),
+    linear-gradient(70deg, transparent 0 70%, #ffffff44 70.3% 70.7%, transparent 71%),
+    linear-gradient(160deg, transparent 0 52%, #ffffff33 52.2% 52.5%, transparent 52.8%);
+  content: "";
+}
+.card.draw8-reverse .corner {
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * .03);
+  font-size: calc(var(--u) * .27);
+  font-style: normal;
+  white-space: nowrap;
+}
+.card.draw8-reverse .corner em {
+  display: inline-block;
+  transform: rotate(-45deg);
+  font-size: .8em;
+  font-style: normal;
+}
+.card.draw8-reverse .corner strong { font-weight: 900; }
+.card.draw8-reverse .corner.top { top: 5%; left: 8%; }
+.card.draw8-reverse .corner.bottom { right: 8%; bottom: 5%; }
+.fan .card.draw8-reverse::before,
+.fan .card.draw8-reverse .oval b,
+.fan .card.draw8-reverse .oval::after,
+.fan .card.draw8-reverse .corner { display: none; }
 .card.back { background: #151515; }
 .card.back .oval { background: var(--red); }
 .card.back .oval b { color: #ffe14a; font-size: calc(var(--card-width) * .3); text-shadow: 1px 1px black; }
@@ -145,6 +322,9 @@ h1 {
 .panel h1 { margin-bottom: 8px; font-size: 2.2rem; }
 .panel h2 { margin: 0; font-size: 1.5rem; }
 .panel p { max-width: 360px; margin: 0; }
+.reveal-panel { width: min(100%, 700px); }
+.revealed-hand { min-height: auto; width: 100%; justify-content: center; flex-wrap: wrap; overflow: visible; }
+.revealed-hand .card { margin: 4px; transform: none; filter: none; }
 .panel input { width: min(100%, 300px); border: 0; border-radius: 10px; padding: 9px 12px; text-align: center; }
 .panel label { margin-bottom: -10px; font-weight: 700; }
 .primary { background: var(--yellow); }
