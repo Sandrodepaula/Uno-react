@@ -149,6 +149,28 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:draw', undefined]);
   });
 
+  it('só permite passar a vez depois de comprar uma carta', () => {
+    const state = gameState({ hand: [{ color: 'red', value: '5', id: 50 }] });
+    renderGame(state);
+
+    expect(screen.getByRole('button', { name: 'Passar a vez' }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Comprar do baralho' }));
+
+    const purchasedState = {
+      ...state,
+      game: {
+        ...state.game,
+        hand: [...state.game.hand, { color: 'blue', value: '9', id: 91 }],
+        drawn: 91,
+      },
+    };
+    act(() => socketMock.dispatch('state:update', purchasedState));
+    expect(screen.getByRole('button', { name: 'Passar a vez' }).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Passar a vez' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:pass', undefined]);
+  });
+
   it('mostra o aviso de eliminação em vez da mão do jogador', () => {
     const players = [
       { id: 'p0', name: 'Alice', score: 0, cardCount: 25, isCurrent: false, eliminated: true },

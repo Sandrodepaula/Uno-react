@@ -238,12 +238,9 @@ io.on('connection', (socket) => {
       game.message = `${room.seats[player].name} comprou ${count} cartas.`;
     } else {
       let card;
-      while (game.deck.length || game.discard.length > 1) {
-        drawCards(game, player, 1);
-        card = game.hands[player].at(-1);
-        if (canPlay(game, card)) break;
-        if (game.deck.length === 0 && game.discard.length <= 1) break;
-      }
+      const handLength = game.hands[player].length;
+      drawCards(game, player, 1);
+      if (game.hands[player].length > handLength) card = game.hands[player].at(-1);
       if (checkMercy(room, player)) {
         if (finishIfLastPlayer(room)) {
           update(room);
@@ -251,14 +248,25 @@ io.on('connection', (socket) => {
         }
         game.current = nextSeat(room, game, player);
         game.message = `${room.seats[player].name} foi eliminado pela Regra da Misericórdia.`;
-      } else if (card && canPlay(game, card)) {
+      } else if (card) {
         game.drawn = card.id;
-        game.message = `${room.seats[player].name} comprou uma carta jogável.`;
+        game.message = `${room.seats[player].name} comprou uma carta${canPlay(game, card) ? ' jogável' : ''}.`;
       } else {
         game.current = nextSeat(room, game, player);
-        game.message = `${room.seats[player].name} comprou uma carta e passou.`;
+        game.message = `${room.seats[player].name} não pôde comprar e passou a vez.`;
       }
     }
+    update(room);
+  }));
+
+  socket.on('game:pass', handle(socket, () => {
+    const room = requireRoom(socket);
+    const player = requirePlayer(socket, room);
+    const game = requireTurn(room, player);
+    if (game.drawn == null) throw new Error('Compre uma carta antes de passar a vez.');
+    game.drawn = null;
+    game.current = nextSeat(room, game, player);
+    game.message = `${room.seats[player].name} passou a vez.`;
     update(room);
   }));
 

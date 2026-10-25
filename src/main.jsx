@@ -62,8 +62,10 @@ export function App() {
   const game = state?.game;
   const hand = game?.hand ?? [];
   const myTurn = Boolean(game && game.phase === 'play' && !game.challenge && game.current === state?.players.findIndex((player) => player.id === state.playerId));
+  const drawnCard = hand.find((card) => card.id === game?.drawn);
   const isEliminated = Boolean(state?.players.find((player) => player.id === state.playerId)?.eliminated);
   const canPlay = (card) => game && (game.stack ? (DRAW_VALUES[card.value] ?? 0) >= game.stackLast : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
+  const drawnCardPlayable = Boolean(drawnCard && canPlay(drawnCard));
   const stuck = myTurn && game.drawn == null && !hand.some(canPlay);
   const send = (event, payload) => socket.emit(event, payload);
 
@@ -163,11 +165,13 @@ export function App() {
               {game?.topCard && <Card card={game.topCard} pop />}
               <span className={`color-indicator ${game?.color}`} title={`Cor atual: ${COLOR_NAMES[game?.color]}`} />
             </div>
-            <p className="message" role="status">{game?.message}{myTurn ? game.drawn != null ? ' Sua vez: jogue a carta comprada.' : stuck ? ' Sua vez: compre uma carta.' : ' Sua vez: jogue uma carta ou compre do baralho.' : ''}{state.players.find((player) => player.id === state.playerId)?.bot ? '' : ''}</p>
+            <p className="message" role="status">{game?.message}{myTurn ? game.drawn != null ? drawnCardPlayable ? ' Sua vez: jogue a carta comprada ou passe.' : ' Sua vez: a carta comprada não é jogável; passe a vez.' : stuck ? ' Sua vez: compre uma carta.' : ' Sua vez: jogue uma carta ou compre do baralho.' : ''}{state.players.find((player) => player.id === state.playerId)?.bot ? '' : ''}</p>
           </main>
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
-            {myTurn && game?.drawn != null && <span className="muted">Jogue a carta comprada</span>}
+            {myTurn && (
+              <button disabled={game.drawn == null} onClick={() => send('game:pass')}>Passar a vez</button>
+            )}
           </div>
           <section className="hand" aria-label="Suas cartas">
             {isEliminated ? <p className="eliminated-message">Você foi eliminado pela Regra da Misericórdia.</p> : hand.map((card) => {
