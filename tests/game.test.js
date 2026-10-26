@@ -247,7 +247,7 @@ describe('regras das cartas', () => {
       card('red', 'skip', 3),
       card('blue', '4', 4),
     ];
-    playCard(room, 0, 1, undefined, undefined, undefined, [2]);
+    playCard(room, 0, 1, undefined, undefined, { discardCardIds: [2] });
     expect(room.game.hands[0].map(({ id }) => id)).toEqual([3, 4]);
     expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 1]);
   });
@@ -262,7 +262,7 @@ describe('regras das cartas', () => {
       card('wild', 'w4', 5),
     ];
 
-    playCard(room, 0, 1, 'red', undefined, undefined, [2]);
+    playCard(room, 0, 1, 'red', undefined, { discardCardIds: [2] });
 
     expect(room.game.hands[0].map(({ id }) => id)).toEqual([3, 4, 5]);
     expect(room.game.discard.map(({ id }) => id)).toEqual([1000, 2, 1]);
@@ -279,7 +279,7 @@ describe('regras das cartas', () => {
       card('blue', '4', 3),
     ];
 
-    expect(() => playCard(room, 0, 1, 'red', undefined, undefined, [3]))
+    expect(() => playCard(room, 0, 1, 'red', undefined, { discardCardIds: [3] }))
       .toThrow('Selecione ao menos uma carta da cor escolhida para descartar.');
     expect(room.game.hands[0].map(({ id }) => id)).toEqual([1, 2, 3]);
   });
@@ -291,7 +291,7 @@ describe('regras das cartas', () => {
       card('red', '2', 2),
       card('blue', '4', 4),
     ];
-    expect(() => playCard(room, 0, 1, undefined, undefined, undefined, [4]))
+    expect(() => playCard(room, 0, 1, undefined, undefined, { discardCardIds: [4] }))
       .toThrow('Selecione ao menos uma carta da mesma cor para descartar.');
     expect(room.game.hands[0].map(({ id }) => id)).toEqual([1, 2, 4]);
   });
@@ -301,7 +301,7 @@ describe('regras das cartas', () => {
     room.game.hands[0] = [card('wild', 'w4', 1), card('green', '5', 2)];
     room.game.hands[1] = [card('blue', '3', 3)];
     room.game.deck = Array.from({ length: 8 }, (_, index) => card('yellow', String(index + 1), index + 10));
-    playCard(room, 0, 1, 'red', undefined, () => 0);
+    playCard(room, 0, 1, 'red', undefined, { getRandomInt: () => 0 });
     expect(room.game.direction).toBe(-1);
     expect(room.game.hands[0]).toHaveLength(5);
     expect(room.game.hands[1]).toHaveLength(1);

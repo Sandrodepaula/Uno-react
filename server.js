@@ -261,7 +261,7 @@ io.on('connection', (socket) => {
     const room = requireRoom(socket);
     const player = requirePlayer(socket, room);
     requireTurn(room, player);
-    playCard(room, player, Number(cardId), color, targetPlayer, undefined, discardCardIds);
+    playCard(room, player, Number(cardId), color, targetPlayer, { discardCardIds });
     update(room);
   }));
 

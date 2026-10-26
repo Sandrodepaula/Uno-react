@@ -171,7 +171,8 @@ export function finishIfLastPlayer(room) {
   return true;
 }
 
-export function playCard(room, player, cardId, chosenColor, targetPlayer, getRandomInt = randomInt, discardCardIds) {
+export function playCard(room, player, cardId, chosenColor, targetPlayer, options = {}) {
+  const { getRandomInt = randomInt, discardCardIds } = options;
   const game = room.game;
   const hand = game.hands[player];
   const cardIndex = hand.findIndex((card) => card.id === cardId);
@@ -401,7 +402,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
         : undefined;
       playCard(room, player, drawn.id, chosenColor,
         drawn.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined,
-        getRandomInt, discardCardIds);
+        { getRandomInt, discardCardIds });
       return;
     }
     game.current = nextSeat(room, game, player);
@@ -421,7 +422,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
     : undefined;
   playCard(room, player, card.id, chosenColor,
     card.value === '7' ? activePlayers(game, room.seats.length).find((index) => index !== player) : undefined,
-    getRandomInt, discardCardIds);
+    { getRandomInt, discardCardIds });
 }
 
 export function resolveUnoPenalty(room, getRandomInt = randomInt) {
