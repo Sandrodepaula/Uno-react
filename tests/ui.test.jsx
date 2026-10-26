@@ -60,6 +60,7 @@ function gameState({ hand = [], game = {}, players = undefined } = {}) {
       challenge: null,
       mercyPending: false,
       mercyAvailable: false,
+      mercyChoiceAvailable: false,
       message: '',
       ...game,
     },
@@ -81,12 +82,39 @@ describe('interface do jogo', () => {
     renderGame(gameState({
       hand: Array.from({ length: 25 }, (_, index) => ({ color: 'red', value: '1', id: index })),
       game: { current: 0, mercyPending: true, mercyAvailable: true },
+      players: [
+        { id: 'p0', name: 'Alice', score: 0, cardCount: 25, isCurrent: false, mercyChoice: 'noMercy' },
+        { id: 'p1', name: 'Beto', score: 0, cardCount: 3, isCurrent: false, mercyChoice: 'mercy' },
+        { id: 'p2', name: 'Caio', score: 0, cardCount: 4, isCurrent: false, mercyChoice: null },
+      ],
     }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sem Misericórdia' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sem misericórdia: confirmar eliminação' }));
 
     expect(socketMock.emitted).toContainEqual(['game:mercy:confirm', undefined]);
-    expect(screen.getByText('Sem Misericórdia')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Com misericórdia' })).toBeTruthy();
+  });
+
+  it('mostra as duas moedas no início e envia a opção escolhida', () => {
+    renderGame(gameState({ game: { phase: 'mercyChoice', mercyChoiceAvailable: true } }));
+
+    expect(screen.getByRole('button', { name: 'Com misericórdia' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Sem misericórdia' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:mercy:choose', { choice: 'noMercy' }]);
+  });
+
+  it('exibe a moeda escolhida junto às cartas do adversário e no canto inferior esquerdo', () => {
+    renderGame(gameState({
+      players: [
+        { id: 'p0', name: 'Alice', score: 0, cardCount: 2, isCurrent: true, mercyChoice: 'mercy' },
+        { id: 'p1', name: 'Beto', score: 0, cardCount: 3, isCurrent: false, mercyChoice: 'noMercy' },
+        { id: 'p2', name: 'Caio', score: 0, cardCount: 4, isCurrent: false, mercyChoice: null },
+      ],
+    }));
+
+    expect(document.querySelector('.own-coin .mercy-coin-label')?.textContent).toBe('Com misericórdia');
+    expect(document.querySelector('.opponent-cards .mercy-coin-label')?.textContent).toBe('Sem misericórdia');
   });
 
   it('cria uma sala pela tela inicial', () => {

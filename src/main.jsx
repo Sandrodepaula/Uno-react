@@ -51,6 +51,39 @@ export function Card({ card, back = false, playable = false, selected = false, o
   );
 }
 
+const MERCY_LABELS = { mercy: 'Com misericórdia', noMercy: 'Sem misericórdia' };
+
+function MercyCoinArt() {
+  return (
+    <>
+      <span className="logo">UNO</span>
+      <span className="mask">
+        <i className="eye left" />
+        <i className="eye right" />
+        <span className="mouth"><b>7</b></span>
+      </span>
+    </>
+  );
+}
+
+function MercyCoin({ choice, onClick, confirming = false, extraLifeAvailable = false }) {
+  const label = MERCY_LABELS[choice];
+  const action = confirming
+    ? choice === 'mercy' && extraLifeAvailable ? 'confirmar vida extra' : 'confirmar eliminação'
+    : null;
+  const accessibleName = action ? `${label}: ${action}` : label;
+  const className = `coin mercy selected ${choice === 'noMercy' ? 'no-mercy' : ''} ${onClick ? 'playable' : ''} ${confirming ? 'confirming' : ''}`;
+
+  return (
+    <div className="mercy-coin-wrap">
+      {onClick
+        ? <button className={className} aria-label={accessibleName} title={accessibleName} onClick={onClick}><MercyCoinArt /></button>
+        : <span className={className} role="img" aria-label={accessibleName} title={accessibleName}><MercyCoinArt /></span>}
+      <span className="mercy-coin-label">{label}</span>
+    </div>
+  );
+}
+
 export function App() {
   const [state, setState] = useState(null);
   const [name, setName] = useState('');
@@ -79,10 +112,13 @@ export function App() {
 
   const game = state?.game;
   const hand = game?.hand ?? [];
+  const me = state?.players.find((player) => player.id === state.playerId);
   const myTurn = Boolean(game && game.phase === 'play' && !game.challenge && !game.mercyPending && game.current === state?.players.findIndex((player) => player.id === state.playerId));
   const drawnCard = hand.find((card) => card.id === game?.drawn);
-  const isEliminated = Boolean(state?.players.find((player) => player.id === state.playerId)?.eliminated);
-  const canPlay = (card) => game && (game.stack ? (DRAW_VALUES[card.value] ?? 0) >= game.stackLast : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
+  const isEliminated = Boolean(me?.eliminated);
+  const canPlay = (card) => game && (game.stack
+    ? (DRAW_VALUES[card.value] ?? 0) * (game.playerMercyChoice === 'noMercy' ? 2 : 1) >= game.stackLast
+    : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
   const drawnCardPlayable = Boolean(drawnCard && canPlay(drawnCard));
   const stuck = myTurn && game.drawn == null && !hand.some(canPlay);
   const send = (event, payload) => socket.emit(event, payload);
@@ -173,9 +209,12 @@ export function App() {
               return (
                 <div className={`opponent ${player.isCurrent && game.phase === 'play' ? 'active' : ''}`} key={player.id}
                   style={{ left: `${50 - 38 * Math.cos(angle)}%`, top: `${54 - 44 * Math.sin(angle)}%` }}>
-                  {!player.eliminated && <div className="fan" aria-hidden="true">{Array.from({ length: Math.min(player.cardCount, 4) }, (_, i) => <Card key={i} back />)}</div>}
+                  <div className="opponent-cards">
+                    {!player.eliminated && <div className="fan" aria-hidden="true">{Array.from({ length: Math.min(player.cardCount, 4) }, (_, i) => <Card key={i} back />)}</div>}
+                    {player.mercyChoice && <MercyCoin choice={player.mercyChoice} />}
+                  </div>
                   <strong>{player.name}{player.eliminated ? ' · Eliminado' : ''}</strong>
-                  <small>{player.eliminated ? 'Regra da Misericórdia' : `${player.cardCount} cartas · ${player.score} pts`}</small>
+                  <small>{player.eliminated ? 'Eliminado' : `${player.cardCount} cartas · ${player.score} pts`}</small>
                 </div>
               );
             })}
@@ -188,29 +227,55 @@ export function App() {
           </main>
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
-            {game?.mercyAvailable && (
-              <div className="mercy-action">
-                <button className="coin mercy playable" aria-label="Sem Misericórdia" title="Sem Misericórdia" onClick={() => send('game:mercy:confirm')}>
-                  <span className="logo">UNO</span>
-                  <span className="mask">
-                    <i className="eye left" />
-                    <i className="eye right" />
-                    <span className="mouth"><b>7</b></span>
-                  </span>
-                </button>
-                <span aria-hidden="true">Sem Misericórdia</span>
-              </div>
-            )}
             {myTurn && (
               <button disabled={game.drawn == null} onClick={() => send('game:pass')}>Passar a vez</button>
             )}
           </div>
+          {me?.mercyChoice && (
+            <div className="own-coin">
+              <MercyCoin
+                choice={me.mercyChoice}
+                extraLifeAvailable={me.extraLifeAvailable}
+                confirming={Boolean(game?.mercyAvailable)}
+                onClick={game?.mercyAvailable ? () => send('game:mercy:confirm') : undefined}
+              />
+            </div>
+          )}
           <section className="hand" aria-label="Suas cartas">
             {isEliminated ? <p className="eliminated-message">Você foi eliminado pela Regra da Misericórdia.</p> : hand.map((card) => {
               const playable = myTurn && canPlay(card) && (game.drawn == null || game.drawn === card.id);
               return <Card key={card.id} card={card} playable={playable} onClick={() => chooseCard(card)} />;
             })}
           </section>
+
+          {game?.phase === 'mercyChoice' && game.mercyChoiceAvailable && (
+            <div className="overlay">
+              <section className="panel mercy-choice-panel" role="dialog" aria-modal="true" aria-labelledby="mercy-choice-title">
+                <h2 id="mercy-choice-title">Escolha sua moeda</h2>
+                <p>Sua escolha ficará visível para todos durante a rodada.</p>
+                <div className="mercy-choice-options">
+                  <button className="mercy-choice-button" aria-label="Com misericórdia" onClick={() => send('game:mercy:choose', { choice: 'mercy' })}>
+                    <span className="coin mercy"><MercyCoinArt /></span>
+                    <strong>Com misericórdia</strong>
+                    <span>Ganhe uma vida extra: ao confirmar a eliminação, descarte sua mão e volte com 7 cartas.</span>
+                  </button>
+                  <button className="mercy-choice-button" aria-label="Sem misericórdia" onClick={() => send('game:mercy:choose', { choice: 'noMercy' })}>
+                    <span className="coin mercy no-mercy"><MercyCoinArt /></span>
+                    <strong>Sem misericórdia</strong>
+                    <span>Dobre a penalidade das cartas de compra que você jogar.</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          )}
+          {game?.phase === 'mercyChoice' && !game.mercyChoiceAvailable && (
+            <div className="overlay">
+              <section className="panel">
+                <h2>Aguardando os jogadores</h2>
+                <p>Você escolheu sua moeda. A rodada começará quando todos tiverem escolhido.</p>
+              </section>
+            </div>
+          )}
 
           {game?.phase === 'play' && game.revealedHand && (
             <div className="overlay">

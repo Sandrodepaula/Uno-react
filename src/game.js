@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 
 export const colors = ['red', 'yellow', 'green', 'blue'];
 export const colorNames = { red: 'vermelho', yellow: 'amarelo', green: 'verde', blue: 'azul' };
+export const mercyChoices = ['mercy', 'noMercy'];
 export const drawValues = { '+2': 2, w4: 4, w6: 6, w8rev: 8, w10: 10 };
 const actionValues = new Set(['skip', 'rev', '+2', 'discardAll', 'wildDiscardAll', 'skipAll', 'w4', 'w6', 'w10', 'roulette', 'draw24', 'attackFinal']);
 
@@ -47,8 +48,8 @@ export const nextSeat = (room, game, player, steps = 1) => {
   }
   return next;
 };
-export const canPlay = (game, card) => game.stack
-  ? (drawValues[card.value] ?? 0) >= game.stackLast
+export const canPlay = (game, card, player) => game.stack
+  ? (drawValues[card.value] ?? 0) * (game.mercyChoices?.[player] === 'noMercy' ? 2 : 1) >= game.stackLast
   : card.color === 'wild' || card.color === game.color || card.value === topCard(game).value;
 export const cardValue = (card) => card.color === 'wild'
   ? 50
@@ -91,9 +92,26 @@ export function deal(room, getRandomInt = randomInt) {
   game.revealedHand = null;
   game.eliminated = [];
   game.mercyPlayer = -1;
-  game.phase = 'play';
-  game.message = `Rodada ${room.round + 1}. Vez de ${room.seats[game.current].name}.`;
+  game.mercyChoices = room.seats.map(() => null);
+  game.extraLives = room.seats.map(() => 0);
+  game.phase = 'mercyChoice';
+  game.message = 'Escolha sua moeda para iniciar a rodada.';
   room.game = game;
+}
+
+export function chooseMercy(room, player, choice) {
+  const game = room.game;
+  if (game.phase !== 'mercyChoice') throw new Error('A escolha da moeda já foi encerrada.');
+  if (!mercyChoices.includes(choice)) throw new Error('Escolha uma moeda válida.');
+  if (game.mercyChoices[player]) throw new Error('Você já escolheu sua moeda.');
+  game.mercyChoices[player] = choice;
+  game.extraLives[player] = choice === 'mercy' ? 1 : 0;
+  if (game.mercyChoices.every(Boolean)) {
+    game.phase = 'play';
+    game.message = `Rodada ${room.round + 1}. Vez de ${room.seats[game.current].name}.`;
+  } else {
+    game.message = `${room.seats[player].name} escolheu sua moeda. Aguardando os demais jogadores.`;
+  }
 }
 
 export function endRound(room, player) {
@@ -111,13 +129,32 @@ export function checkMercy(room, player) {
   const game = room.game;
   if (game.hands[player].length < 25 || game.eliminated.includes(player) || game.mercyPlayer >= 0) return false;
   game.mercyPlayer = player;
-  game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`;
+  game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme sua moeda.`;
+  return true;
+}
+
+function useMercyLife(room, player) {
+  const game = room.game;
+  if (game.mercyChoices[player] !== 'mercy' || game.extraLives[player] <= 0) return false;
+  const top = game.discard.pop();
+  game.discard.push(...game.hands[player], top);
+  game.hands[player] = [];
+  drawCards(game, player, 7);
+  game.extraLives[player] = 0;
+  game.drawn = null;
+  game.unoPlayer = game.unoPlayer === player ? -1 : game.unoPlayer;
   return true;
 }
 
 export function confirmMercy(room, player) {
   const game = room.game;
   if (game.mercyPlayer !== player) throw new Error('Você não pode confirmar a Regra da Misericórdia.');
+  if (useMercyLife(room, player)) {
+    game.mercyPlayer = -1;
+    game.message = `${room.seats[player].name} usou sua vida extra e voltou com 7 cartas.`;
+    if (game.current === player) game.current = nextSeat(room, game, player);
+    return false;
+  }
   game.eliminated.push(player);
   game.mercyPlayer = -1;
   game.unoPlayer = game.unoPlayer === player ? -1 : game.unoPlayer;
@@ -140,7 +177,7 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
   const cardIndex = hand.findIndex((card) => card.id === cardId);
   if (cardIndex < 0) throw new Error('Essa carta não está na sua mão.');
   const card = hand[cardIndex];
-  if (!canPlay(game, card) || (game.drawn != null && game.drawn !== card.id)) throw new Error('Essa carta não pode ser jogada agora.');
+  if (!canPlay(game, card, player) || (game.drawn != null && game.drawn !== card.id)) throw new Error('Essa carta não pode ser jogada agora.');
   if (card.color === 'wild' && !['roulette', 'attackFinal'].includes(card.value) && !colors.includes(chosenColor)) throw new Error('Escolha uma cor válida.');
   if (card.value === '7' && (!Number.isInteger(targetPlayer) || targetPlayer === player || game.eliminated.includes(targetPlayer) || !game.hands[targetPlayer])) {
     throw new Error('Escolha outro jogador que ainda esteja na partida.');
@@ -211,15 +248,18 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
       game.direction *= -1;
       message = card.value === 'w8rev' ? 'O sentido do jogo inverteu.' : message;
       if (card.value === 'w4' && room.seats.length === 2) {
-        drawCards(game, player, 4, getRandomInt);
-        checkMercy(room, player);
         advance = 0;
       }
     }
+    const drawAmount = drawValues[card.value] * (game.mercyChoices[player] === 'noMercy' ? 2 : 1);
     if (!(card.value === 'w4' && room.seats.length === 2)) {
-      game.stack += drawValues[card.value];
-      game.stackLast = drawValues[card.value];
+      game.stack += drawAmount;
+      game.stackLast = drawAmount;
       message = `${room.seats[nextSeat(room, game, player)].name} deve empilhar uma carta Comprar de valor igual ou maior, ou comprar ${game.stack}.`;
+    } else {
+      drawCards(game, player, drawAmount, getRandomInt);
+      checkMercy(room, player);
+      advance = 0;
     }
   } else if (card.value === 'roulette') {
     const target = nextSeat(room, game, player);
@@ -232,13 +272,18 @@ export function playCard(room, player, cardId, chosenColor, targetPlayer, getRan
     const actionCount = hand.filter((other) => other.color === 'wild' || actionValues.has(other.value)).length;
     game.revealedHand = { player, cards: hand.slice(), actionCount };
     drawCards(game, target, actionCount, getRandomInt);
-    if (actionCount >= 7 && !game.eliminated.includes(target)) {
-      game.eliminated.push(target);
-      game.unoPlayer = game.unoPlayer === target ? -1 : game.unoPlayer;
+    const revived = actionCount >= 7 && useMercyLife(room, target);
+    if (actionCount >= 7) {
+      if (!revived && !game.eliminated.includes(target)) {
+        game.eliminated.push(target);
+        game.unoPlayer = game.unoPlayer === target ? -1 : game.unoPlayer;
+      }
     } else checkMercy(room, target);
     if (game.eliminated.includes(target) && finishIfLastPlayer(room)) return;
     advance = game.eliminated.includes(target) ? 1 : 2;
-    message = actionCount >= 7
+    message = revived
+      ? `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} usou sua vida extra e voltou com 7 cartas.`
+      : actionCount >= 7
       ? `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} comprou ${actionCount} cartas e foi eliminado.`
       : `${room.seats[player].name} revelou ${actionCount} cartas de ação ou curingas. ${room.seats[target].name} comprou ${actionCount} carta${actionCount === 1 ? '' : 's'} e perdeu a vez.`;
   } else if (card.value === 'draw24') {
@@ -319,7 +364,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
   const player = game.current;
   if (player < 0 || !room.seats[player]?.bot || game.phase !== 'play') return;
   const hand = game.hands[player];
-  const playable = hand.filter((card) => canPlay(game, card));
+  const playable = hand.filter((card) => canPlay(game, card, player));
   if (!playable.length) {
     if (game.stack) {
       const count = game.stack;
@@ -338,7 +383,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
     while (game.deck.length || game.discard.length > 1) {
       drawCards(game, player, 1, getRandomInt);
       drawn = hand.at(-1);
-      if (canPlay(game, drawn)) break;
+      if (canPlay(game, drawn, player)) break;
       if (game.deck.length === 0 && game.discard.length <= 1) break;
     }
     if (checkMercy(room, player)) {
@@ -347,7 +392,7 @@ export function moveBot(room, getRandomInt = randomInt, random = Math.random) {
       game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`;
       return;
     }
-    if (drawn && canPlay(game, drawn)) {
+    if (drawn && canPlay(game, drawn, player)) {
       const chosenColor = drawn.color === 'wild' && !['roulette', 'attackFinal'].includes(drawn.value)
         ? pickBotColor(hand, getRandomInt)
         : undefined;

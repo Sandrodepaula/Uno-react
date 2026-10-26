@@ -7,6 +7,7 @@ import path from 'node:path';
 import {
   canPlay,
   checkMercy,
+  chooseMercy,
   colors,
   confirmMercy,
   deal,
@@ -54,6 +55,8 @@ function publicView(room, playerId) {
       cardCount: game?.hands[index]?.length ?? 0,
       eliminated: Boolean(game?.eliminated.includes(index)),
       isCurrent: Boolean(game && game.current === index && game.phase === 'play'),
+      mercyChoice: game?.mercyChoices[index] ?? null,
+      extraLifeAvailable: Boolean(game?.extraLives[index]),
     })),
     game: game ? {
       phase: game.phase,
@@ -80,6 +83,8 @@ function publicView(room, playerId) {
       mercyPending: game.mercyPlayer >= 0,
       mercyAvailable: player >= 0 && game.mercyPlayer === player,
       mercyPlayerName: game.mercyPlayer >= 0 ? room.seats[game.mercyPlayer].name : null,
+      mercyChoiceAvailable: player >= 0 && game.phase === 'mercyChoice' && !game.mercyChoices[player],
+      playerMercyChoice: player >= 0 ? game.mercyChoices[player] : null,
       winner: game.winner,
       points: game.points,
       message: game.message,
@@ -141,6 +146,13 @@ function schedule(room) {
 function update(room) {
   broadcast(room);
   schedule(room);
+}
+
+function dealRound(room) {
+  deal(room);
+  room.seats.forEach((seat, index) => {
+    if (seat.bot) chooseMercy(room, index, 'noMercy');
+  });
 }
 
 function requireRoom(socket) {
@@ -234,7 +246,14 @@ io.on('connection', (socket) => {
     if (room.seats.length < 2 || room.seats.length > 7) throw new Error('A partida precisa de 2 a 7 jogadores.');
     room.notice = '';
     room.round = 0;
-    deal(room);
+    dealRound(room);
+    update(room);
+  }));
+
+  socket.on('game:mercy:choose', handle(socket, ({ choice }) => {
+    const room = requireRoom(socket);
+    const player = requirePlayer(socket, room);
+    chooseMercy(room, player, choice);
     update(room);
   }));
 
@@ -281,7 +300,7 @@ io.on('connection', (socket) => {
         game.message = `${room.seats[player].name} chegou a 25 cartas. Confirme a Regra da Misericórdia.`;
       } else if (card) {
         game.drawn = card.id;
-        game.message = `${room.seats[player].name} comprou uma carta${canPlay(game, card) ? ' jogável' : ''}.`;
+        game.message = `${room.seats[player].name} comprou uma carta${canPlay(game, card, player) ? ' jogável' : ''}.`;
       } else {
         game.current = nextSeat(room, game, player);
         game.message = `${room.seats[player].name} não pôde comprar e passou a vez.`;
@@ -350,7 +369,7 @@ io.on('connection', (socket) => {
     if (room.game?.phase !== 'over') throw new Error('A rodada ainda não terminou.');
     if (room.scores.some((score) => score >= 1000)) room.scores = room.scores.map(() => 0);
     room.round = (room.round ?? 0) + 1;
-    deal(room);
+    dealRound(room);
     update(room);
   }));
 

@@ -3,6 +3,7 @@ import {
   canPlay,
   cardValue,
   checkMercy,
+  chooseMercy,
   confirmMercy,
   deal,
   drawCards,
@@ -38,6 +39,8 @@ function createRoom(count = 3) {
       challenge: null,
       eliminated: [],
       mercyPlayer: -1,
+      mercyChoices: Array(count).fill(null),
+      extraLives: Array(count).fill(0),
       phase: 'play',
       message: '',
     },
@@ -61,10 +64,27 @@ describe('baralho e distribuição', () => {
   it('distribui sete cartas, deixa a carta inicial numérica e preserva o baralho', () => {
     const room = createRoom(7);
     deal(room, (max) => max - 1);
+    expect(room.game.phase).toBe('mercyChoice');
+    expect(room.game.mercyChoices).toEqual(Array(7).fill(null));
     expect(room.game.hands.map((hand) => hand.length)).toEqual(Array(7).fill(7));
     expect(Number.isNaN(Number(room.game.discard[0].value))).toBe(false);
     expect(room.game.discard[0].color).not.toBe('wild');
     expect(room.game.deck.length + room.game.discard.length + room.game.hands.flat().length).toBe(184);
+  });
+
+  it('aguarda cada jogador escolher uma moeda antes de iniciar a rodada', () => {
+    const room = createRoom(2);
+    deal(room, (max) => max - 1);
+    chooseMercy(room, 0, 'mercy');
+
+    expect(room.game.phase).toBe('mercyChoice');
+    expect(room.game.extraLives[0]).toBe(1);
+    expect(() => chooseMercy(room, 0, 'noMercy')).toThrow('Você já escolheu sua moeda.');
+
+    chooseMercy(room, 1, 'noMercy');
+    expect(room.game.phase).toBe('play');
+    expect(room.game.mercyChoices).toEqual(['mercy', 'noMercy']);
+    expect(room.game.message).toContain('Vez de');
   });
 
   it('não fabrica cartas quando o baralho e a pilha de descarte acabam', () => {
@@ -100,6 +120,16 @@ describe('regras das cartas', () => {
     expect(canPlay(game, card('wild', 'w8rev', 11))).toBe(true);
   });
 
+  it('permite empilhar uma carta cuja penalidade dobrada atinge o valor exigido', () => {
+    const room = createRoom(3);
+    room.game.stack = 4;
+    room.game.stackLast = 4;
+    room.game.mercyChoices[1] = 'noMercy';
+
+    expect(canPlay(room.game, card('red', '+2', 1), 1)).toBe(true);
+    expect(canPlay(room.game, card('red', '+2', 1), 2)).toBe(false);
+  });
+
   it('empilha penalidades e o próximo jogador compra a soma ao não conseguir responder', () => {
     const room = createRoom(3);
     room.game.hands[0] = [card('red', '+2', 1), card('red', '3', 2)];
@@ -110,6 +140,17 @@ describe('regras das cartas', () => {
     playCard(room, 1, 3, 'blue');
     expect(room.game.stack).toBe(8);
     expect(room.game.stackLast).toBe(6);
+  });
+
+  it('dobra a penalidade de compra quando quem joga escolheu Sem misericórdia', () => {
+    const room = createRoom(3);
+    room.game.mercyChoices[0] = 'noMercy';
+    room.game.hands[0] = [card('red', '+2', 1), card('red', '3', 2)];
+
+    playCard(room, 0, 1);
+
+    expect(room.game.stack).toBe(4);
+    expect(room.game.stackLast).toBe(4);
   });
 
   it('Coringa Inverter +8 inverte o sentido e permite empilhar penalidades', () => {
@@ -353,6 +394,56 @@ describe('regras das cartas', () => {
     expect(room.game.current).toBe(1);
   });
 
+  it('usa a vida extra uma vez, descarta a mão e retorna com sete cartas', () => {
+    const room = createRoom(3);
+    const oldHand = Array.from({ length: 25 }, (_, index) => card('red', '1', index));
+    room.game.hands[0] = oldHand;
+    room.game.deck = Array.from({ length: 7 }, (_, index) => card('blue', '2', index + 30));
+    room.game.mercyChoices[0] = 'mercy';
+    room.game.extraLives[0] = 1;
+    room.game.current = 1;
+
+    expect(checkMercy(room, 0)).toBe(true);
+    expect(confirmMercy(room, 0)).toBe(false);
+    expect(room.game.hands[0]).toHaveLength(7);
+    expect(room.game.discard.slice(0, -1)).toEqual(oldHand);
+    expect(room.game.discard.at(-1)).toEqual(card('red', '1', 1000));
+    expect(room.game.extraLives[0]).toBe(0);
+    expect(room.game.eliminated).not.toContain(0);
+    expect(room.game.current).toBe(1);
+
+    room.game.hands[0] = Array.from({ length: 25 }, (_, index) => card('green', '3', index + 50));
+    expect(checkMercy(room, 0)).toBe(true);
+    confirmMercy(room, 0);
+    expect(room.game.eliminated).toContain(0);
+  });
+
+  it('usa a vida extra ao ser eliminado pelo Ataque Final', () => {
+    const room = createRoom(3);
+    room.game.hands[0] = [
+      card('wild', 'attackFinal', 1),
+      card('red', 'skip', 2),
+      card('red', 'rev', 3),
+      card('red', '+2', 4),
+      card('red', 'discardAll', 5),
+      card('red', 'skipAll', 6),
+      card('wild', 'w4', 7),
+      card('blue', '5', 8),
+      card('red', '+2', 10),
+    ];
+    room.game.hands[1] = [card('green', '2', 9)];
+    room.game.deck = Array.from({ length: 14 }, (_, index) => card('yellow', '1', index + 20));
+    room.game.mercyChoices[1] = 'mercy';
+    room.game.extraLives[1] = 1;
+
+    playCard(room, 0, 1);
+
+    expect(room.game.hands[1]).toHaveLength(7);
+    expect(room.game.extraLives[1]).toBe(0);
+    expect(room.game.eliminated).not.toContain(1);
+    expect(room.game.message).toContain('usou sua vida extra');
+  });
+
   it('encerra a rodada ao confirmar a eliminação do penúltimo jogador', () => {
     const room = createRoom(2);
     room.game.hands[0] = Array.from({ length: 25 }, (_, index) => card('red', '1', index));
@@ -434,6 +525,7 @@ describe('simulação em massa', () => {
       const getRandomInt = (max) => Math.floor(random() * max);
       const room = createRoom(2 + (match % 6));
       deal(room, getRandomInt);
+      room.seats.forEach((_, index) => chooseMercy(room, index, 'noMercy'));
 
       let turns = 0;
       while (room.game.phase === 'play' && turns < 2000) {
