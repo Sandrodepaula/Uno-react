@@ -50,6 +50,7 @@ export const nextSeat = (room, game, player, steps = 1) => {
 };
 export const canPlay = (game, card, player) => game.stack
   ? (drawValues[card.value] ?? 0) * (game.mercyChoices?.[player] === 'noMercy' ? 2 : 1) >= game.stackLast
+    && (card.value !== '+2' || card.color === game.color)
   : card.color === 'wild' || card.color === game.color || card.value === topCard(game).value;
 export const cardValue = (card) => card.color === 'wild'
   ? 50

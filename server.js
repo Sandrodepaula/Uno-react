@@ -66,6 +66,9 @@ function publicView(room, playerId) {
       topCard: topCard(game),
       stack: game.stack,
       stackLast: game.stackLast,
+      playableCardIds: player >= 0 && game.phase === 'play' && game.current === player && !game.challenge && game.mercyPlayer < 0
+        ? game.hands[player].filter((card) => canPlay(game, card, player)).map((card) => card.id)
+        : [],
       drawn: player >= 0 && game.drawn != null && game.current === player ? game.drawn : null,
       hand: player >= 0 ? game.hands[player] : [],
       challenge: game.challenge ? {

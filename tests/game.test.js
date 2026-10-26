@@ -130,6 +130,30 @@ describe('regras das cartas', () => {
     expect(canPlay(room.game, card('red', '+2', 1), 2)).toBe(false);
   });
 
+  it('exige a cor atual para empilhar um Comprar +2, além do valor da penalidade', () => {
+    const room = createRoom(3);
+    room.game.stack = 2;
+    room.game.stackLast = 2;
+    room.game.color = 'red';
+
+    expect(canPlay(room.game, card('red', '+2', 1), 1)).toBe(true);
+    expect(canPlay(room.game, card('blue', '+2', 2), 1)).toBe(false);
+    expect(canPlay(room.game, card('blue', 'w4', 3), 1)).toBe(true);
+  });
+
+  it('rejeita no servidor um Comprar +2 de cor diferente durante o empilhamento', () => {
+    const room = createRoom(3);
+    room.game.stack = 2;
+    room.game.stackLast = 2;
+    room.game.color = 'red';
+    room.game.current = 1;
+    room.game.hands[1] = [card('blue', '+2', 2)];
+
+    expect(() => playCard(room, 1, 2)).toThrow('Essa carta não pode ser jogada agora.');
+    expect(room.game.stack).toBe(2);
+    expect(room.game.hands[1]).toEqual([card('blue', '+2', 2)]);
+  });
+
   it('empilha penalidades e o próximo jogador compra a soma ao não conseguir responder', () => {
     const room = createRoom(3);
     room.game.hands[0] = [card('red', '+2', 1), card('red', '3', 2)];

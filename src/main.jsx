@@ -117,7 +117,10 @@ export function App() {
   const drawnCard = hand.find((card) => card.id === game?.drawn);
   const isEliminated = Boolean(me?.eliminated);
   const canPlay = (card) => game && (game.stack
-    ? (DRAW_VALUES[card.value] ?? 0) * (game.playerMercyChoice === 'noMercy' ? 2 : 1) >= game.stackLast
+    ? game.playableCardIds
+      ? game.playableCardIds.includes(card.id)
+      : (DRAW_VALUES[card.value] ?? 0) * (game.playerMercyChoice === 'noMercy' ? 2 : 1) >= game.stackLast
+        && (card.value !== '+2' || card.color === game.color)
     : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
   const drawnCardPlayable = Boolean(drawnCard && canPlay(drawnCard));
   const stuck = myTurn && game.drawn == null && !hand.some(canPlay);

@@ -61,6 +61,7 @@ function gameState({ hand = [], game = {}, players = undefined } = {}) {
       mercyPending: false,
       mercyAvailable: false,
       mercyChoiceAvailable: false,
+      playableCardIds: [],
       message: '',
       ...game,
     },
@@ -102,6 +103,27 @@ describe('interface do jogo', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sem misericórdia' }));
 
     expect(socketMock.emitted).toContainEqual(['game:mercy:choose', { choice: 'noMercy' }]);
+  });
+
+  it('permite jogar uma carta de compra aprovada pelo servidor durante o empilhamento', () => {
+    renderGame(gameState({
+      hand: [{ color: 'red', value: '+2', id: 51 }],
+      game: { current: 0, stack: 4, stackLast: 4, playableCardIds: [51] },
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vermelho Comprar 2' }));
+
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 51 }]);
+  });
+
+  it('não habilita Comprar +2 de cor diferente da cor atual durante o empilhamento', () => {
+    renderGame(gameState({
+      hand: [{ color: 'blue', value: '+2', id: 52 }],
+      game: { current: 0, color: 'red', stack: 2, stackLast: 2, playableCardIds: [] },
+    }));
+
+    const drawCard = screen.getByLabelText('Azul Comprar 2');
+    expect(drawCard.className).not.toContain('playable');
   });
 
   it('exibe a moeda escolhida junto às cartas do adversário e no canto inferior esquerdo', () => {
