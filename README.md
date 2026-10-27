@@ -2,6 +2,8 @@
 
 O projeto separa a interface React das regras e do estado do jogo, que são controlados pelo servidor Node.js. O Socket.IO atualiza a sala em tempo real e envia a cada jogador somente as próprias cartas.
 
+O servidor fica em `src/server.js`, com configuração do Socket.IO, gerenciamento de salas, eventos, serviços de jogo, bots e temporizadores organizados em módulos separados. `src/game.js` mantém a API das regras disponível para os testes e para a interface.
+
 ## Requisitos
 
 - Node.js 18 ou superior
