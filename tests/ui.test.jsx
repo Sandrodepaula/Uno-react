@@ -105,6 +105,39 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:mercy:choose', { choice: 'noMercy' }]);
   });
 
+  it('ativa a moeda para selecionar uma carta de compra e a deixa desativada depois do uso', () => {
+    const state = gameState({
+      hand: [
+        { color: 'red', value: '+2', id: 101 },
+        { color: 'red', value: '5', id: 102 },
+      ],
+      game: { mercyCoinAvailable: true, playableCardIds: [101, 102] },
+      players: [
+        { id: 'p0', name: 'Alice', score: 0, cardCount: 2, isCurrent: true, mercyChoice: 'noMercy' },
+        { id: 'p1', name: 'Beto', score: 0, cardCount: 3, isCurrent: false },
+        { id: 'p2', name: 'Caio', score: 0, cardCount: 4, isCurrent: false },
+      ],
+    });
+    renderGame(state);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sem misericórdia: dobrar uma carta de compra' }));
+    expect(socketMock.emitted).toContainEqual(['game:mercy:activate', undefined]);
+
+    act(() => socketMock.dispatch('state:update', {
+      ...state,
+      game: { ...state.game, mercyCoinAvailable: false, mercyCoinActive: true, playableCardIds: [101] },
+    }));
+    expect(document.querySelector('.hand [aria-label="Vermelho 5"]').className).not.toContain('playable');
+    fireEvent.click(screen.getByRole('button', { name: 'Vermelho Comprar 2' }));
+    expect(socketMock.emitted).toContainEqual(['game:play', { cardId: 101 }]);
+
+    act(() => socketMock.dispatch('state:update', {
+      ...state,
+      game: { ...state.game, mercyCoinAvailable: false, mercyCoinActive: false, mercyCoinUsed: true },
+    }));
+    expect(screen.getByRole('button', { name: 'Sem misericórdia: moeda usada nesta rodada' }).disabled).toBe(true);
+  });
+
   it('permite jogar uma carta de compra aprovada pelo servidor durante o empilhamento', () => {
     renderGame(gameState({
       hand: [{ color: 'red', value: '+2', id: 51 }],

@@ -9,6 +9,7 @@ import {
   nextSeat,
   playCard,
   resolveRoulette,
+  toggleMercyCoin,
 } from '../game/game.js';
 import { requirePlayer, requireRoom, requireTurn } from '../rooms/roomController.js';
 import { handle } from '../utils/errors.js';
@@ -18,6 +19,14 @@ export function registerGameEvents(socket, { update }) {
     const room = requireRoom(socket);
     const player = requirePlayer(socket, room);
     chooseMercy(room, player, choice);
+    update(room);
+  }));
+
+  socket.on('game:mercy:activate', handle(socket, () => {
+    const room = requireRoom(socket);
+    const player = requirePlayer(socket, room);
+    requireTurn(room, player);
+    toggleMercyCoin(room, player);
     update(room);
   }));
 

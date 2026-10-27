@@ -66,20 +66,33 @@ function MercyCoinArt() {
   );
 }
 
-function MercyCoin({ choice, onClick, confirming = false, extraLifeAvailable = false }) {
+function MercyCoin({
+  choice,
+  onClick,
+  confirming = false,
+  extraLifeAvailable = false,
+  actionLabel,
+  status,
+  active = false,
+  used = false,
+  button = false,
+  disabled = false,
+}) {
   const label = MERCY_LABELS[choice];
   const action = confirming
     ? choice === 'mercy' && extraLifeAvailable ? 'confirmar vida extra' : 'confirmar eliminação'
-    : null;
+    : actionLabel;
   const accessibleName = action ? `${label}: ${action}` : label;
-  const className = `coin mercy selected ${choice === 'noMercy' ? 'no-mercy' : ''} ${onClick ? 'playable' : ''} ${confirming ? 'confirming' : ''}`;
+  const className = `coin mercy selected ${choice === 'noMercy' ? 'no-mercy' : ''} ${onClick ? 'playable' : ''} ${confirming ? 'confirming' : ''} ${active ? 'activated' : ''} ${used ? 'used' : ''}`;
+  const renderButton = button || Boolean(onClick) || disabled;
 
   return (
     <div className="mercy-coin-wrap">
-      {onClick
-        ? <button className={className} aria-label={accessibleName} title={accessibleName} onClick={onClick}><MercyCoinArt /></button>
+      {renderButton
+        ? <button className={className} aria-label={accessibleName} title={accessibleName} onClick={onClick} disabled={disabled}><MercyCoinArt /></button>
         : <span className={className} role="img" aria-label={accessibleName} title={accessibleName}><MercyCoinArt /></span>}
       <span className="mercy-coin-label">{label}</span>
+      {status && <small className="mercy-coin-status">{status}</small>}
     </div>
   );
 }
@@ -119,7 +132,7 @@ export function App() {
   const canPlay = (card) => game && (game.stack
     ? game.playableCardIds
       ? game.playableCardIds.includes(card.id)
-      : (DRAW_VALUES[card.value] ?? 0) * (game.playerMercyChoice === 'noMercy' ? 2 : 1) >= game.stackLast
+      : (DRAW_VALUES[card.value] ?? 0) * (game.mercyCoinActive ? 2 : 1) >= game.stackLast
         && (card.value !== '+2' || card.color === game.color)
     : card.color === 'wild' || card.color === game.color || card.value === game.topCard.value);
   const drawnCardPlayable = Boolean(drawnCard && canPlay(drawnCard));
@@ -240,13 +253,36 @@ export function App() {
                 choice={me.mercyChoice}
                 extraLifeAvailable={me.extraLifeAvailable}
                 confirming={Boolean(game?.mercyAvailable)}
-                onClick={game?.mercyAvailable ? () => send('game:mercy:confirm') : undefined}
+                onClick={game?.mercyAvailable
+                  ? () => send('game:mercy:confirm')
+                  : me.mercyChoice === 'noMercy' && myTurn && (game?.mercyCoinAvailable || game?.mercyCoinActive)
+                    ? () => send('game:mercy:activate')
+                    : undefined}
+                actionLabel={game?.mercyCoinActive
+                  ? 'cancelar ativação'
+                  : game?.mercyCoinUsed
+                    ? 'moeda usada nesta rodada'
+                    : 'dobrar uma carta de compra'}
+                status={game?.mercyCoinActive
+                  ? 'Ativada · escolha uma carta de compra'
+                  : game?.mercyCoinUsed
+                    ? 'Usada nesta rodada'
+                    : undefined}
+                active={Boolean(game?.mercyCoinActive)}
+                used={Boolean(game?.mercyCoinUsed)}
+                button={me.mercyChoice === 'noMercy'}
+                disabled={me.mercyChoice === 'noMercy'
+                  && !game?.mercyAvailable
+                  && (game?.mercyCoinUsed || !myTurn || (!game?.mercyCoinAvailable && !game?.mercyCoinActive))}
               />
             </div>
           )}
           <section className="hand" aria-label="Suas cartas">
             {isEliminated ? <p className="eliminated-message">Você foi eliminado pela Regra da Misericórdia.</p> : hand.map((card) => {
-              const playable = myTurn && canPlay(card) && (game.drawn == null || game.drawn === card.id);
+              const playable = myTurn
+                && canPlay(card)
+                && (!game.mercyCoinActive || DRAW_VALUES[card.value])
+                && (game.drawn == null || game.drawn === card.id);
               return <Card key={card.id} card={card} playable={playable} onClick={() => chooseCard(card)} />;
             })}
           </section>
@@ -265,7 +301,7 @@ export function App() {
                   <button className="mercy-choice-button" aria-label="Sem misericórdia" onClick={() => send('game:mercy:choose', { choice: 'noMercy' })}>
                     <span className="coin mercy no-mercy"><MercyCoinArt /></span>
                     <strong>Sem misericórdia</strong>
-                    <span>Dobre a penalidade das cartas de compra que você jogar.</span>
+                    <span>Ative a moeda no seu turno para dobrar uma carta de compra. Ela só pode ser usada uma vez por rodada.</span>
                   </button>
                 </div>
               </section>

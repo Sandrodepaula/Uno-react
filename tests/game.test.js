@@ -16,6 +16,7 @@ import {
   resolveRoulette,
   resolveUnoPenalty,
   scheduleUnoPenalty,
+  toggleMercyCoin,
 } from '../src/game.js';
 
 const card = (color, value, id) => ({ color, value, id });
@@ -40,6 +41,8 @@ function createRoom(count = 3) {
       eliminated: [],
       mercyPlayer: -1,
       mercyChoices: Array(count).fill(null),
+      mercyCoinActive: Array(count).fill(false),
+      mercyCoinUsed: Array(count).fill(false),
       extraLives: Array(count).fill(0),
       phase: 'play',
       message: '',
@@ -120,14 +123,22 @@ describe('regras das cartas', () => {
     expect(canPlay(game, card('wild', 'w8rev', 11))).toBe(true);
   });
 
-  it('permite empilhar uma carta cuja penalidade dobrada atinge o valor exigido', () => {
+  it('permite empilhar com a moeda ativada uma carta cuja penalidade dobrada atinge o valor exigido', () => {
     const room = createRoom(3);
     room.game.stack = 4;
     room.game.stackLast = 4;
+    room.game.current = 1;
     room.game.mercyChoices[1] = 'noMercy';
+    room.game.hands[1] = [card('red', '+2', 1)];
 
-    expect(canPlay(room.game, card('red', '+2', 1), 1)).toBe(true);
+    expect(canPlay(room.game, card('red', '+2', 1), 1)).toBe(false);
     expect(canPlay(room.game, card('red', '+2', 1), 2)).toBe(false);
+    toggleMercyCoin(room, 1);
+    expect(canPlay(room.game, card('red', '+2', 1), 1)).toBe(true);
+    playCard(room, 1, 1);
+    expect(room.game.stack).toBe(8);
+    expect(room.game.mercyCoinActive[1]).toBe(false);
+    expect(room.game.mercyCoinUsed[1]).toBe(true);
   });
 
   it('exige a cor atual para empilhar um Comprar +2, além do valor da penalidade', () => {
@@ -166,15 +177,34 @@ describe('regras das cartas', () => {
     expect(room.game.stackLast).toBe(6);
   });
 
-  it('dobra a penalidade de compra quando quem joga escolheu Sem misericórdia', () => {
+  it('só dobra a penalidade depois de ativar a moeda e a consome após uma carta de compra', () => {
     const room = createRoom(3);
     room.game.mercyChoices[0] = 'noMercy';
-    room.game.hands[0] = [card('red', '+2', 1), card('red', '3', 2)];
+    room.game.hands[0] = [card('red', '+2', 1), card('red', '+2', 2), card('red', '3', 3)];
 
     playCard(room, 0, 1);
 
-    expect(room.game.stack).toBe(4);
+    expect(room.game.stack).toBe(2);
+    expect(room.game.mercyCoinUsed[0]).toBe(false);
+    room.game.current = 0;
+    toggleMercyCoin(room, 0);
+    playCard(room, 0, 2);
+
+    expect(room.game.stack).toBe(6);
     expect(room.game.stackLast).toBe(4);
+    expect(room.game.mercyCoinActive[0]).toBe(false);
+    expect(room.game.mercyCoinUsed[0]).toBe(true);
+    room.game.current = 0;
+    expect(() => toggleMercyCoin(room, 0)).toThrow('Você já usou sua moeda nesta rodada.');
+  });
+
+  it('não permite ativar a moeda sem uma carta de compra jogável', () => {
+    const room = createRoom(3);
+    room.game.mercyChoices[0] = 'noMercy';
+    room.game.hands[0] = [card('blue', '+2', 1)];
+
+    expect(() => toggleMercyCoin(room, 0)).toThrow('Você não tem uma carta de compra jogável para dobrar.');
+    expect(room.game.mercyCoinActive[0]).toBe(false);
   });
 
   it('Coringa Inverter +8 inverte o sentido e permite empilhar penalidades', () => {

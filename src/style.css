@@ -661,8 +661,11 @@ h1 {
 }
 .coin.mercy.playable { outline: 3px solid var(--yellow); outline-offset: 2px; cursor: pointer; }
 .coin.mercy.selected { box-shadow: 0 0 0 4px #49e8d0, 0 3px 8px #0007; }
+.coin.mercy.activated { outline: 3px solid var(--yellow); outline-offset: 3px; }
+.coin.mercy.used { filter: grayscale(1); opacity: .55; }
 .mercy-coin-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .mercy-coin-label { max-width: 100px; font-size: .68rem; font-weight: 800; line-height: 1.1; text-align: center; }
+.mercy-coin-status { max-width: 120px; color: var(--yellow); font-size: .65rem; font-weight: 800; line-height: 1.1; text-align: center; }
 .opponent-cards { display: flex; align-items: center; gap: 6px; }
 .opponent-cards .coin.mercy { --coin-size: 30px; }
 .own-coin { position: fixed; z-index: 4; bottom: 12px; left: 12px; }
