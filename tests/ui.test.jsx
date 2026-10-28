@@ -105,7 +105,7 @@ describe('interface do jogo', () => {
     expect(socketMock.emitted).toContainEqual(['game:mercy:choose', { choice: 'noMercy' }]);
   });
 
-  it('ativa a moeda para selecionar uma carta de compra e a deixa desativada depois do uso', () => {
+  it('ativa a moeda, permite selecionar uma carta de compra e a remove da tela após o uso', () => {
     const state = gameState({
       hand: [
         { color: 'red', value: '+2', id: 101 },
@@ -133,9 +133,22 @@ describe('interface do jogo', () => {
 
     act(() => socketMock.dispatch('state:update', {
       ...state,
+      players: state.players.map((player) => player.id === 'p0' ? { ...player, mercyCoinUsed: true } : player),
       game: { ...state.game, mercyCoinAvailable: false, mercyCoinActive: false, mercyCoinUsed: true },
     }));
-    expect(screen.getByRole('button', { name: 'Sem misericórdia: moeda usada nesta rodada' }).disabled).toBe(true);
+    expect(document.querySelector('.own-coin')).toBeNull();
+  });
+
+  it('remove a moeda utilizada do adversário da mesa', () => {
+    renderGame(gameState({
+      players: [
+        { id: 'p0', name: 'Alice', score: 0, cardCount: 2, isCurrent: true, mercyChoice: 'mercy' },
+        { id: 'p1', name: 'Beto', score: 0, cardCount: 3, isCurrent: false, mercyChoice: 'noMercy', mercyCoinUsed: true },
+        { id: 'p2', name: 'Caio', score: 0, cardCount: 4, isCurrent: false, mercyChoice: null },
+      ],
+    }));
+
+    expect(document.querySelector('.opponent-cards .mercy-coin-label')).toBeNull();
   });
 
   it('permite jogar uma carta de compra aprovada pelo servidor durante o empilhamento', () => {

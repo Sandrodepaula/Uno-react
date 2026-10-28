@@ -18,6 +18,7 @@ export function publicView(room, playerId) {
       isCurrent: Boolean(game && game.current === index && game.phase === 'play'),
       mercyChoice: game?.mercyChoices[index] ?? null,
       extraLifeAvailable: Boolean(game?.extraLives[index]),
+      mercyCoinUsed: Boolean(game?.mercyCoinUsed?.[index]),
     })),
     game: game ? {
       phase: game.phase,

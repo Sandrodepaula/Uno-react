@@ -227,7 +227,7 @@ export function App() {
                   style={{ left: `${50 - 38 * Math.cos(angle)}%`, top: `${54 - 44 * Math.sin(angle)}%` }}>
                   <div className="opponent-cards">
                     {!player.eliminated && <div className="fan" aria-hidden="true">{Array.from({ length: Math.min(player.cardCount, 4) }, (_, i) => <Card key={i} back />)}</div>}
-                    {player.mercyChoice && <MercyCoin choice={player.mercyChoice} />}
+                    {player.mercyChoice && !player.mercyCoinUsed && <MercyCoin choice={player.mercyChoice} />}
                   </div>
                   <strong>{player.name}{player.eliminated ? ' · Eliminado' : ''}</strong>
                   <small>{player.eliminated ? 'Eliminado' : `${player.cardCount} cartas · ${player.score} pts`}</small>
@@ -243,40 +243,33 @@ export function App() {
           </main>
           <div className="action-bar">
             {game?.unoAvailable && <button className="uno-button" onClick={() => send('game:uno')}>UNO!</button>}
+            {me?.mercyChoice && !(me.mercyChoice === 'noMercy' && game?.mercyCoinUsed) && (
+              <div className="own-coin">
+                <MercyCoin
+                  choice={me.mercyChoice}
+                  extraLifeAvailable={me.extraLifeAvailable}
+                  confirming={Boolean(game?.mercyAvailable)}
+                  onClick={game?.mercyAvailable
+                    ? () => send('game:mercy:confirm')
+                    : me.mercyChoice === 'noMercy' && myTurn && (game?.mercyCoinAvailable || game?.mercyCoinActive)
+                      ? () => send('game:mercy:activate')
+                      : undefined}
+                  actionLabel={game?.mercyCoinActive ? 'cancelar ativação' : 'dobrar uma carta de compra'}
+                  status={game?.mercyCoinActive
+                    ? 'Ativada · escolha uma carta de compra'
+                    : undefined}
+                  active={Boolean(game?.mercyCoinActive)}
+                  button={me.mercyChoice === 'noMercy'}
+                  disabled={me.mercyChoice === 'noMercy'
+                    && !game?.mercyAvailable
+                    && (!myTurn || (!game?.mercyCoinAvailable && !game?.mercyCoinActive))}
+                />
+              </div>
+            )}
             {myTurn && (
               <button disabled={game.drawn == null} onClick={() => send('game:pass')}>Passar a vez</button>
             )}
           </div>
-          {me?.mercyChoice && (
-            <div className="own-coin">
-              <MercyCoin
-                choice={me.mercyChoice}
-                extraLifeAvailable={me.extraLifeAvailable}
-                confirming={Boolean(game?.mercyAvailable)}
-                onClick={game?.mercyAvailable
-                  ? () => send('game:mercy:confirm')
-                  : me.mercyChoice === 'noMercy' && myTurn && (game?.mercyCoinAvailable || game?.mercyCoinActive)
-                    ? () => send('game:mercy:activate')
-                    : undefined}
-                actionLabel={game?.mercyCoinActive
-                  ? 'cancelar ativação'
-                  : game?.mercyCoinUsed
-                    ? 'moeda usada nesta rodada'
-                    : 'dobrar uma carta de compra'}
-                status={game?.mercyCoinActive
-                  ? 'Ativada · escolha uma carta de compra'
-                  : game?.mercyCoinUsed
-                    ? 'Usada nesta rodada'
-                    : undefined}
-                active={Boolean(game?.mercyCoinActive)}
-                used={Boolean(game?.mercyCoinUsed)}
-                button={me.mercyChoice === 'noMercy'}
-                disabled={me.mercyChoice === 'noMercy'
-                  && !game?.mercyAvailable
-                  && (game?.mercyCoinUsed || !myTurn || (!game?.mercyCoinAvailable && !game?.mercyCoinActive))}
-              />
-            </div>
-          )}
           <section className="hand" aria-label="Suas cartas">
             {isEliminated ? <p className="eliminated-message">Você foi eliminado pela Regra da Misericórdia.</p> : hand.map((card) => {
               const playable = myTurn
